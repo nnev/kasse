@@ -35,7 +35,7 @@ CREATE TABLE transactions (
 
 
 	-- transaction_id is a sequential identifier.
-	--transaction_id INTEGER NOT NULL,
+	transaction_id INTEGER NOT NULL,
 	-- user_id is the user that made this transaction.
 	user_id INTEGER,
 	-- card_id is the card this transaction was made with, if any.
