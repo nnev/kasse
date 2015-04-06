@@ -50,7 +50,7 @@ CREATE TABLE transactions (
 	kind TEXT,
 
 	-- constraints
-	--PRIMARY KEY (transaction_id),
+	PRIMARY KEY (transaction_id),
 	FOREIGN KEY (user_id) REFERENCES users(user_id),
 	FOREIGN KEY (card_id) REFERENCES cards(card_id)
 );
