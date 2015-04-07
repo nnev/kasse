@@ -41,19 +41,19 @@ func createDB(t *testing.T) *sqlx.DB {
 
 func insertData(t *testing.T, db *sqlx.DB, us []User, cs []Card, ts []Transaction) {
 	for _, v := range us {
-		_, err := db.Exec("INSERT INTO users (user_id, name, password) VALUES (?, ?, ?)", v.ID, v.Name, v.Password)
+		_, err := db.Exec("INSERT INTO users (user_id, name, password) VALUES ($1, $2, $3)", v.ID, v.Name, v.Password)
 		if err != nil {
 			t.Fatalf("could not insert user %v: %v", v, err)
 		}
 	}
 	for _, v := range cs {
-		_, err := db.Exec("INSERT INTO cards (card_id, user_id) VALUES (?, ?)", v.ID, v.User)
+		_, err := db.Exec("INSERT INTO cards (card_id, user_id) VALUES ($1, $2)", v.ID, v.User)
 		if err != nil {
 			t.Fatalf("could not insert card %v: %v", v, err)
 		}
 	}
 	for _, v := range ts {
-		_, err := db.Exec("INSERT INTO transactions (transaction_id, user_id, card_id, time, amount, kind) VALUES (?, ?, ?, ?, ?, ?)", v.ID, v.User, v.Card, v.Time, v.Amount, v.Kind)
+		_, err := db.Exec("INSERT INTO transactions (transaction_id, user_id, card_id, time, amount, kind) VALUES ($1, $2, $3, $4, $5, $6)", v.ID, v.User, v.Card, v.Time, v.Amount, v.Kind)
 		if err != nil {
 			t.Fatalf("could not insert transaction %v: %v", v, err)
 		}

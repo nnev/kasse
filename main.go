@@ -102,7 +102,7 @@ func HandleCard(uid []byte) (Result, error) {
 
 	// Get user this card belongs to
 	var user User
-	if err := tx.Get(&user, `SELECT users.user_id, name, password FROM cards LEFT JOIN users ON cards.user_id = users.user_id WHERE card_id = ?`, uid); err != nil {
+	if err := tx.Get(&user, `SELECT users.user_id, name, password FROM cards LEFT JOIN users ON cards.user_id = users.user_id WHERE card_id = $1`, uid); err != nil {
 		log.Println("Card not found in database")
 		return 0, ErrCardNotFound
 	}
@@ -111,7 +111,7 @@ func HandleCard(uid []byte) (Result, error) {
 	// Get account balance of this user
 	var balance int64
 	var b sql.NullInt64
-	if err := tx.Get(&b, `SELECT SUM(amount) FROM transactions WHERE user_id = ?`, user.ID); err != nil {
+	if err := tx.Get(&b, `SELECT SUM(amount) FROM transactions WHERE user_id = $1`, user.ID); err != nil {
 		log.Println("Could not get balance:", err)
 		return 0, err
 	}
@@ -125,7 +125,7 @@ func HandleCard(uid []byte) (Result, error) {
 	}
 
 	// Insert new transaction
-	if _, err := tx.Exec(`INSERT INTO transactions (user_id, card_id, time, amount, kind) VALUES (?, ?, ?, ?, ?)`, user.ID, uid, time.Now(), -100, "Kartenswipe"); err != nil {
+	if _, err := tx.Exec(`INSERT INTO transactions (user_id, card_id, time, amount, kind) VALUES ($1, $2, $3, $4, $5)`, user.ID, uid, time.Now(), -100, "Kartenswipe"); err != nil {
 		return 0, err
 	}
 
