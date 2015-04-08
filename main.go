@@ -165,6 +165,8 @@ func RegisterUser(name string, password []byte) (*User, error) {
 	var user User
 	if err := tx.Get(&user, `SELECT user_id, name, password FROM users WHERE name = $1`, name); err == nil {
 		return nil, ErrUserExists
+	} else if err != sql.ErrNoRows {
+		return nil, err
 	}
 
 	result, err := tx.Exec(`INSERT INTO users (name, password) VALUES ($1, $2)`, name, pwhash)
