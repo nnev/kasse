@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 	"time"
@@ -144,6 +145,54 @@ func TestRegistration(t *testing.T) {
 
 		if err := bcrypt.CompareHashAndPassword(gotUser.Password, tc.password); err != nil {
 			t.Errorf("bcrypt.CompareHashAndPassword(%q, %s) = %v, want nil", gotUser.Password, tc.password, err)
+		}
+	}
+}
+
+func TestAddCard(t *testing.T) {
+	db = createDB(t)
+	defer db.Close()
+
+	mero := &User{ID: 1, Name: "Merovius", Password: []byte("password")}
+	koebi := &User{ID: 2, Name: "Koebi", Password: []byte("password1")}
+
+	insertData(t, db, []User{*mero, *koebi}, nil, nil)
+
+	tcs := []struct {
+		uid      []byte
+		user     *User
+		wantCard bool
+		wantErr  error
+	}{
+		{[]byte("aaaa"), mero, true, nil},
+		{[]byte("aaab"), mero, true, nil},
+		{[]byte("baaa"), koebi, true, nil},
+		{[]byte("baab"), koebi, true, nil},
+		{[]byte("aaaa"), mero, false, ErrCardExists},
+		{[]byte("aaaa"), koebi, false, ErrCardExists},
+	}
+
+	for _, tc := range tcs {
+		gotCard, gotErr := AddCard(tc.uid, tc.user)
+		if gotErr != tc.wantErr {
+			t.Errorf("AddCard(%x, %v) == (%v, %v), want (_, %v)", tc.uid, tc.user, gotCard, gotErr, tc.wantErr)
+			continue
+		}
+
+		if !tc.wantCard {
+			if gotCard != nil {
+				t.Errorf("AddCard(%x, %v) == (%v, %v), want (nil, %v)", tc.uid, tc.user, gotCard, gotErr, tc.wantErr)
+			}
+			continue
+		}
+
+		wantCard := Card{
+			ID:   tc.uid,
+			User: tc.user.ID,
+		}
+
+		if bytes.Compare(gotCard.ID, wantCard.ID) != 0 || gotCard.User != wantCard.User {
+			t.Errorf("AddCard(%x, %v) == (%v, %v), want (%v, %v)", tc.uid, tc.user, gotCard, gotErr, wantCard, tc.wantErr)
 		}
 	}
 }
