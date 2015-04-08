@@ -89,6 +89,9 @@ var ErrCardNotFound = errors.New("card not found")
 // ErrUserExists means that a duplicate username was tried to register.
 var ErrUserExists = errors.New("username already taken")
 
+// ErrCardExists means that an already registered card was tried to register again.
+var ErrCardExists = errors.New("card already registered")
+
 // HandleCard handles the swiping of a new card. It looks up the user the card
 // belongs to and checks the account balance. It returns PaymentMade, when the
 // account has been charged correctly, LowBalance if there is less than 5€ left
@@ -189,6 +192,43 @@ func RegisterUser(name string, password []byte) (*User, error) {
 	user.Name = name
 	user.Password = pwhash
 	return &user, nil
+}
+
+// AddCard adds a card to the database with a given owner and returns a
+// populated card struct. It returns ErrCardExists if a card with the given UID
+// already exists.
+func AddCard(uid []byte, owner *User) (*Card, error) {
+	log.Printf("Adding card %x for owner %s", uid, owner.Name)
+
+	tx, err := db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// We need to check first if the card already exists, because the error
+	// from an insert can't be checked programatically.
+	var card Card
+	if err := tx.Get(&card, `SELECT card_id, user_id FROM cards WHERE card_id = $1`, uid); err == nil {
+		log.Println("Card already exists, current owner", card.User)
+		return nil, ErrCardExists
+	} else if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	if _, err := tx.Exec(`INSERT INTO cards (card_id, user_id) VALUES ($1, $2)`, uid, owner.ID); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	log.Println("Card added successfully")
+
+	card.ID = uid
+	card.User = owner.ID
+	return &card, nil
 }
 
 func main() {
