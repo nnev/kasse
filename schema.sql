@@ -7,7 +7,7 @@ CREATE TABLE users (
 	-- user_id is a sequential identifier.
 	user_id INTEGER NOT NULL,
 	-- name is the username used for display and login.
-	name TEXT,
+	name TEXT UNIQUE,
 	-- password is a bcrypt-hashed password.
 	password BINARY,
 
