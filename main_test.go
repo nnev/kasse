@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type TestReader []struct {
@@ -108,6 +109,41 @@ func TestHandleCard(t *testing.T) {
 		}
 		if got != tc.want {
 			t.Errorf("HandleCard(%s) == (%v, %v), want (%v, %v)", string(tc.input), got, gotErr, tc.want, tc.wantErr)
+		}
+	}
+}
+
+func TestRegistration(t *testing.T) {
+	db = createDB(t)
+	defer db.Close()
+
+	tcs := []struct {
+		name     string
+		password []byte
+		wantUser bool
+		wantErr  error
+	}{
+		{"Merovius", []byte("foobar"), true, nil},
+		{"Koebi", []byte("password"), true, nil},
+		{"Merovius", []byte("password1"), false, ErrUserExists},
+	}
+
+	for _, tc := range tcs {
+		gotUser, gotErr := RegisterUser(tc.name, tc.password)
+		if gotErr != tc.wantErr {
+			t.Errorf("RegisterUser(%s, %q) == (%v, %v), want (_, %v)", tc.name, tc.password, gotUser, gotErr, tc.wantErr)
+			continue
+		}
+
+		if !tc.wantUser {
+			if gotUser != nil {
+				t.Errorf("RegisterUser(%s, %q) == (%v, %v), want (nil, %v)", tc.name, tc.password, gotUser, gotErr, tc.wantErr)
+			}
+			continue
+		}
+
+		if err := bcrypt.CompareHashAndPassword(gotUser.Password, tc.password); err != nil {
+			t.Errorf("bcrypt.CompareHashAndPassword(%q, %s) = %v, want nil", gotUser.Password, tc.password, err)
 		}
 	}
 }

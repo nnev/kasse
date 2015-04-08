@@ -13,6 +13,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -85,6 +86,9 @@ var ErrAccountEmpty = errors.New("account is empty")
 // registered to any user.
 var ErrCardNotFound = errors.New("card not found")
 
+// ErrUserExists means that a duplicate username was tried to register.
+var ErrUserExists = errors.New("username already taken")
+
 // HandleCard handles the swiping of a new card. It looks up the user the card
 // belongs to and checks the account balance. It returns PaymentMade, when the
 // account has been charged correctly, LowBalance if there is less than 5€ left
@@ -137,6 +141,54 @@ func HandleCard(uid []byte) (Result, error) {
 		return LowBalance, nil
 	}
 	return PaymentMade, nil
+}
+
+// RegisterUser creates a new row in the user table, with the given username
+// and password. It returns a populated User and no error on success. If the
+// username is already taken, it returns ErrUserExists.
+func RegisterUser(name string, password []byte) (*User, error) {
+	log.Printf("Registering user %s", name)
+
+	tx, err := db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	pwhash, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	// We need to check first if the username is already taken, because the
+	// error from an insert can't be checked programmatically.
+	var user User
+	if err := tx.Get(&user, `SELECT user_id, name, password FROM users WHERE name = $1`, name); err == nil {
+		return nil, ErrUserExists
+	} else if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	result, err := tx.Exec(`INSERT INTO users (name, password) VALUES ($1, $2)`, name, pwhash)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		if err := tx.Get(&id, `SELECT user_id FROM users WHERE name = $1`, name); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	user.ID = int(id)
+	user.Name = name
+	user.Password = pwhash
+	return &user, nil
 }
 
 func main() {
