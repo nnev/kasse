@@ -63,10 +63,12 @@ func insertData(t *testing.T, db *sqlx.DB, us []User, cs []Card, ts []Transactio
 }
 
 func TestHandleCard(t *testing.T) {
-	db = createDB(t)
-	defer db.Close()
+	t.Parallel()
 
-	insertData(t, db, []User{
+	k := Kasse{createDB(t)}
+	defer k.db.Close()
+
+	insertData(t, k.db, []User{
 		{ID: 1, Name: "Merovius", Password: []byte("password")},
 		{ID: 2, Name: "Koebi", Password: []byte("password1")},
 	}, []Card{
@@ -101,7 +103,7 @@ func TestHandleCard(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		got, gotErr := HandleCard(tc.input)
+		got, gotErr := k.HandleCard(tc.input)
 		if tc.wantErr != nil {
 			if gotErr != tc.wantErr {
 				t.Errorf("HandleCard(%s) == (%v, %v), want (_, %v)", string(tc.input), got, gotErr, tc.wantErr)
@@ -115,8 +117,10 @@ func TestHandleCard(t *testing.T) {
 }
 
 func TestRegistration(t *testing.T) {
-	db = createDB(t)
-	defer db.Close()
+	t.Parallel()
+
+	k := Kasse{createDB(t)}
+	defer k.db.Close()
 
 	tcs := []struct {
 		name     string
@@ -130,7 +134,7 @@ func TestRegistration(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		gotUser, gotErr := RegisterUser(tc.name, tc.password)
+		gotUser, gotErr := k.RegisterUser(tc.name, tc.password)
 		if gotErr != tc.wantErr {
 			t.Errorf("RegisterUser(%s, %q) == (%v, %v), want (_, %v)", tc.name, tc.password, gotUser, gotErr, tc.wantErr)
 			continue
@@ -150,13 +154,15 @@ func TestRegistration(t *testing.T) {
 }
 
 func TestAddCard(t *testing.T) {
-	db = createDB(t)
-	defer db.Close()
+	t.Parallel()
+
+	k := Kasse{createDB(t)}
+	defer k.db.Close()
 
 	mero := &User{ID: 1, Name: "Merovius", Password: []byte("password")}
 	koebi := &User{ID: 2, Name: "Koebi", Password: []byte("password1")}
 
-	insertData(t, db, []User{*mero, *koebi}, nil, nil)
+	insertData(t, k.db, []User{*mero, *koebi}, nil, nil)
 
 	tcs := []struct {
 		uid      []byte
@@ -173,7 +179,7 @@ func TestAddCard(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		gotCard, gotErr := AddCard(tc.uid, tc.user)
+		gotCard, gotErr := k.AddCard(tc.uid, tc.user)
 		if gotErr != tc.wantErr {
 			t.Errorf("AddCard(%x, %v) == (%v, %v), want (_, %v)", tc.uid, tc.user, gotCard, gotErr, tc.wantErr)
 			continue

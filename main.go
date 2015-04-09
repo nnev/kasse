@@ -20,8 +20,11 @@ var (
 	// Defaults for development
 	driver  = flag.String("sql-driver", "sqlite3", "The SQL driver to use for the database")
 	connect = flag.String("connect", "kasse.sqlite", "The connection specification for the database")
-	db      *sqlx.DB
 )
+
+type Kasse struct {
+	db *sqlx.DB
+}
 
 // User represents a user in the system (as in the database schema).
 type User struct {
@@ -98,10 +101,10 @@ var ErrCardExists = errors.New("card already registered")
 // after the charge (the charge is still made) and AccountEmpty when there is
 // no balance left on the account. The account is charged if and only if the
 // returned error is nil.
-func HandleCard(uid []byte) (Result, error) {
+func (k *Kasse) HandleCard(uid []byte) (Result, error) {
 	log.Printf("Card %x was swiped", uid)
 
-	tx, err := db.Beginx()
+	tx, err := k.db.Beginx()
 	if err != nil {
 		return 0, err
 	}
@@ -149,10 +152,10 @@ func HandleCard(uid []byte) (Result, error) {
 // RegisterUser creates a new row in the user table, with the given username
 // and password. It returns a populated User and no error on success. If the
 // username is already taken, it returns ErrUserExists.
-func RegisterUser(name string, password []byte) (*User, error) {
+func (k *Kasse) RegisterUser(name string, password []byte) (*User, error) {
 	log.Printf("Registering user %s", name)
 
-	tx, err := db.Beginx()
+	tx, err := k.db.Beginx()
 	if err != nil {
 		return nil, err
 	}
@@ -197,10 +200,10 @@ func RegisterUser(name string, password []byte) (*User, error) {
 // AddCard adds a card to the database with a given owner and returns a
 // populated card struct. It returns ErrCardExists if a card with the given UID
 // already exists.
-func AddCard(uid []byte, owner *User) (*Card, error) {
+func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 	log.Printf("Adding card %x for owner %s", uid, owner.Name)
 
-	tx, err := db.Beginx()
+	tx, err := k.db.Beginx()
 	if err != nil {
 		return nil, err
 	}
@@ -232,12 +235,15 @@ func AddCard(uid []byte, owner *User) (*Card, error) {
 }
 
 func main() {
-	var err error
-	if db, err = sqlx.Connect(*driver, *connect); err != nil {
+	var k Kasse
+
+	if db, err := sqlx.Connect(*driver, *connect); err != nil {
 		log.Fatal("Could not open database:", err)
+	} else {
+		k.db = db
 	}
 	defer func() {
-		if err := db.Close(); err != nil {
+		if err := k.db.Close(); err != nil {
 			log.Println("Error closing database:", err)
 		}
 	}()
@@ -272,7 +278,7 @@ MainLoop:
 	for {
 		select {
 		case uid := <-uids:
-			res, err := HandleCard(uid)
+			res, err := k.HandleCard(uid)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 			} else {
