@@ -65,7 +65,7 @@ func insertData(t *testing.T, db *sqlx.DB, us []User, cs []Card, ts []Transactio
 func TestHandleCard(t *testing.T) {
 	t.Parallel()
 
-	k := Kasse{createDB(t)}
+	k := Kasse{db: createDB(t)}
 	defer k.db.Close()
 
 	insertData(t, k.db, []User{
@@ -119,7 +119,7 @@ func TestHandleCard(t *testing.T) {
 func TestRegistration(t *testing.T) {
 	t.Parallel()
 
-	k := Kasse{createDB(t)}
+	k := Kasse{db: createDB(t)}
 	defer k.db.Close()
 
 	tcs := []struct {
@@ -156,7 +156,7 @@ func TestRegistration(t *testing.T) {
 func TestAddCard(t *testing.T) {
 	t.Parallel()
 
-	k := Kasse{createDB(t)}
+	k := Kasse{db: createDB(t)}
 	defer k.db.Close()
 
 	mero := &User{ID: 1, Name: "Merovius", Password: []byte("password")}
@@ -202,3 +202,63 @@ func TestAddCard(t *testing.T) {
 		}
 	}
 }
+
+func usersAreEqual(a, b *User) bool {
+	if a == nil {
+		return b == nil
+	}
+	if b == nil {
+		return false
+	}
+	if a.ID != b.ID {
+		return false
+	}
+	if a.Name != b.Name {
+		return false
+	}
+	if bytes.Compare(a.Password, b.Password) != 0 {
+		return false
+	}
+	return true
+}
+
+func TestAuthentication(t *testing.T) {
+	t.Parallel()
+
+	k := Kasse{db: createDB(t)}
+	defer k.db.Close()
+
+	// bcrypt hash of "foobar"
+	mero := User{
+		ID:       1,
+		Name:     "Merovius",
+		Password: []byte("$2a$10$HvkgrSxCQxOSFB4vvPd0SuP5urdZUuXSMumMYA5qjli9Mh0pcVDXS"),
+	}
+	insertData(t, k.db, []User{mero}, nil, nil)
+
+	tcs := []struct {
+		username string
+		password []byte
+		wantUser *User
+		wantErr  error
+	}{
+		{"Merovius", []byte("foobar"), &mero, nil},
+		{"Merovius", []byte("wrong password"), nil, ErrWrongAuth},
+		{"Koebi", []byte("somepassword"), nil, ErrWrongAuth},
+	}
+
+	for _, tc := range tcs {
+		before := time.Now()
+		gotUser, gotErr := k.Authenticate(tc.username, tc.password)
+		after := time.Now()
+		if after.Sub(before) <= 200*time.Millisecond {
+			t.Errorf(`Authenticate took %v, should be at least 200ms`, after.Sub(before))
+		}
+
+		if gotErr != tc.wantErr || !usersAreEqual(gotUser, tc.wantUser) {
+			t.Fatalf(`Authenticate(%v, %v) == (%v, %v), expected (%v, %v)`, tc.username, tc.password, gotUser, gotErr, tc.wantUser, tc.wantErr)
+		}
+	}
+}
+
+// TODO: Test the HTTP handlers

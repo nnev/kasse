@@ -1,5 +1,5 @@
-INSERT INTO users (user_id, name, password) VALUES (1, 'Merovius', 'password');
-INSERT INTO users (user_id, name, password) VALUES (2, 'Koebi', 'password1');
+INSERT INTO users (user_id, name, password) VALUES (1, 'Merovius', '$2a$10$itZjdNwMSxCRVXepc61mue2DybeIPAqx/7pia4iONZluluiRdIVmq');
+INSERT INTO users (user_id, name, password) VALUES (2, 'Koebi', '$2a$10$6.LdtTXyxK9o13Qi6u97ceQNMbf.rYiO8IlQMCdIWfBEoREAnwlWO');
 
 INSERT INTO cards (card_id, user_id) VALUES (x'61616161', 1);
 INSERT INTO cards (card_id, user_id) VALUES (x'61616162', 1);

@@ -6,11 +6,14 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/gorilla/context"
+	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
@@ -20,10 +23,14 @@ var (
 	// Defaults for development
 	driver  = flag.String("sql-driver", "sqlite3", "The SQL driver to use for the database")
 	connect = flag.String("connect", "kasse.sqlite", "The connection specification for the database")
+	listen  = flag.String("listen", "localhost:9000", "Where to listen for HTTP connections")
 )
 
+// Kasse collects all state of the application in a central type, to make
+// parallel testing possible.
 type Kasse struct {
-	db *sqlx.DB
+	db       *sqlx.DB
+	sessions sessions.Store
 }
 
 // User represents a user in the system (as in the database schema).
@@ -92,8 +99,13 @@ var ErrCardNotFound = errors.New("card not found")
 // ErrUserExists means that a duplicate username was tried to register.
 var ErrUserExists = errors.New("username already taken")
 
-// ErrCardExists means that an already registered card was tried to register again.
+// ErrCardExists means that an already registered card was tried to register
+// again.
 var ErrCardExists = errors.New("card already registered")
+
+// ErrWrongAuth means that an invalid username or password was provided for
+// Authentication.
+var ErrWrongAuth = errors.New("wrong username or password")
 
 // HandleCard handles the swiping of a new card. It looks up the user the card
 // belongs to and checks the account balance. It returns PaymentMade, when the
@@ -234,7 +246,39 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 	return &card, nil
 }
 
+// Authenticate tries to authenticate a given username/password combination
+// against the database. It is guaranteed to take at least 200 Milliseconds. It
+// returns ErrWrongAuth, if the user or password was wrong. If no error
+// occured, it will return a fully populated User.
+func (k *Kasse) Authenticate(username string, password []byte) (*User, error) {
+	log.Printf("Verifying user %v", username)
+	delay := time.After(200 * time.Millisecond)
+	defer func() {
+		<-delay
+	}()
+
+	user := new(User)
+	if err := k.db.Get(user, `SELECT user_id, name, password FROM users WHERE name = $1`, username); err == sql.ErrNoRows {
+		log.Printf("No such user %v", username)
+		return nil, ErrWrongAuth
+	} else if err != nil {
+		return nil, err
+	}
+
+	if err := bcrypt.CompareHashAndPassword(user.Password, password); err == bcrypt.ErrMismatchedHashAndPassword {
+		log.Println("Wrong password")
+		return nil, ErrWrongAuth
+	} else if err != nil {
+		return nil, err
+	}
+
+	log.Printf("Successfully authenticated %v", username)
+	return user, nil
+}
+
 func main() {
+	flag.Parse()
+
 	var k Kasse
 
 	if db, err := sqlx.Connect(*driver, *connect); err != nil {
@@ -248,6 +292,9 @@ func main() {
 		}
 	}()
 
+	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
+	k.RegisterHandlers()
+
 	r, err := NewNFCReader("")
 	if err != nil {
 		log.Fatal(err)
@@ -257,6 +304,8 @@ func main() {
 			log.Println("Error closing reader:", err)
 		}
 	}()
+
+	go http.ListenAndServe(*listen, context.ClearHandler(http.DefaultServeMux))
 
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
