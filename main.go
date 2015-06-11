@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/Merovius/go-lcd2usb/lcd2usb"
@@ -58,10 +58,10 @@ type Transaction struct {
 
 // Result is the action taken by a swipe of a card. It should be communicated
 // to the user.
-type Result int
+type ResultCode int
 
 const (
-	_ Result = iota
+	_ ResultCode = iota
 	// PaymentMade means the charge was applied successfully and there are
 	// sufficient funds left in the account.
 	PaymentMade
@@ -73,8 +73,22 @@ const (
 	AccountEmpty
 )
 
+// Result is the action taken by a swipe of a card. It contains all information
+// to be communicated to the user.
+type Result struct {
+	Code    ResultCode
+	UID     []byte
+	User    string
+	Account float32
+}
+
+func (r *Result) Display() string {
+	// TODO(mero): Make sure format does not overflow (floating point)
+	return fmt.Sprintf("Card: %x\n%-9s%.2fE", r.UID, r.User, r.Account)
+}
+
 // String implements fmt.Stringer.
-func (r Result) String() string {
+func (r ResultCode) String() string {
 	switch r {
 	case PaymentMade:
 		return "PaymentMade"
@@ -112,12 +126,12 @@ var ErrWrongAuth = errors.New("wrong username or password")
 // after the charge (the charge is still made) and AccountEmpty when there is
 // no balance left on the account. The account is charged if and only if the
 // returned error is nil.
-func (k *Kasse) HandleCard(uid []byte) (Result, error) {
+func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	log.Printf("Card %x was swiped", uid)
 
 	tx, err := k.db.Beginx()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	defer tx.Rollback()
 
@@ -125,7 +139,7 @@ func (k *Kasse) HandleCard(uid []byte) (Result, error) {
 	var user User
 	if err := tx.Get(&user, `SELECT users.user_id, name, password FROM cards LEFT JOIN users ON cards.user_id = users.user_id WHERE card_id = $1`, uid); err != nil {
 		log.Println("Card not found in database")
-		return 0, ErrCardNotFound
+		return nil, ErrCardNotFound
 	}
 	log.Printf("Card belongs to %v", user.Name)
 
@@ -134,30 +148,40 @@ func (k *Kasse) HandleCard(uid []byte) (Result, error) {
 	var b sql.NullInt64
 	if err := tx.Get(&b, `SELECT SUM(amount) FROM transactions WHERE user_id = $1`, user.ID); err != nil {
 		log.Println("Could not get balance:", err)
-		return 0, err
+		return nil, err
 	}
 	if b.Valid {
 		balance = b.Int64
 	}
 	log.Printf("Account balance is %d", balance)
 
+	res := &Result{
+		UID:     uid,
+		User:    user.Name,
+		Account: float32(balance) / 100,
+	}
 	if balance < 100 {
-		return AccountEmpty, ErrAccountEmpty
+		res.Code = AccountEmpty
+		return res, ErrAccountEmpty
 	}
 
 	// Insert new transaction
 	if _, err := tx.Exec(`INSERT INTO transactions (user_id, card_id, time, amount, kind) VALUES ($1, $2, $3, $4, $5)`, user.ID, uid, time.Now(), -100, "Kartenswipe"); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if balance < 600 {
-		return LowBalance, nil
+		log.Println("balance is low")
+		res.Code = LowBalance
+	} else {
+		res.Code = PaymentMade
 	}
-	return PaymentMade, nil
+	log.Println("returning")
+	return res, nil
 }
 
 // RegisterUser creates a new row in the user table, with the given username
@@ -275,6 +299,39 @@ func (k *Kasse) Authenticate(username string, password []byte) (*User, error) {
 	return user, nil
 }
 
+func ResultToLCD(lcd *lcd2usb.Device, res *Result, err error) error {
+	var r, g, b uint8
+	var text string
+	if res != nil {
+		text = res.Display()
+		switch res.Code {
+		default:
+			r, g, b = 255, 255, 255
+		case PaymentMade:
+			r, g, b = 0, 255, 0
+		case LowBalance:
+			r, g, b = 255, 50, 0
+		case AccountEmpty:
+			r, g, b = 255, 0, 0
+		}
+	} else {
+		r, g, b = 255, 0, 0
+		text = err.Error()
+	}
+
+	log.Println(r, g, b)
+	lcd.Color(r, g, b)
+	for i, l := range strings.Split(text, "\n") {
+		lcd.CursorPosition(1, uint8(i+1))
+		fmt.Fprint(lcd, l)
+	}
+	// TODO: Make flag
+	time.Sleep(time.Second)
+	lcd.Color(0, 0, 255)
+	lcd.Clear()
+	return nil
+}
+
 func main() {
 	flag.Parse()
 
@@ -318,11 +375,6 @@ func main() {
 		}
 
 		res, err := k.HandleCard(ev.UID)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		} else {
-			fmt.Println(res)
-			fmt.Fprintln(lcd, res)
-		}
+		ResultToLCD(lcd, res, err)
 	}
 }
