@@ -85,7 +85,7 @@ func TestHandleCard(t *testing.T) {
 	tcs := []struct {
 		input   []byte
 		wantErr error
-		want    Result
+		want    ResultCode
 	}{
 		{[]byte("foobar"), ErrCardNotFound, 0},
 		{[]byte("baaa"), ErrAccountEmpty, AccountEmpty},
@@ -107,10 +107,10 @@ func TestHandleCard(t *testing.T) {
 		if tc.wantErr != nil {
 			if gotErr != tc.wantErr {
 				t.Errorf("HandleCard(%s) == (%v, %v), want (_, %v)", string(tc.input), got, gotErr, tc.wantErr)
-				continue
 			}
+			continue
 		}
-		if got != tc.want {
+		if got == nil || got.Code != tc.want {
 			t.Errorf("HandleCard(%s) == (%v, %v), want (%v, %v)", string(tc.input), got, gotErr, tc.want, tc.wantErr)
 		}
 	}
