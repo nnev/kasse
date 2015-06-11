@@ -56,8 +56,8 @@ type Transaction struct {
 	Kind   string    `db:"kind"`
 }
 
-// Result is the action taken by a swipe of a card. It should be communicated
-// to the user.
+// ResultCode is the action taken by a swipe of a card. It should be
+// communicated to the user.
 type ResultCode int
 
 const (
@@ -82,6 +82,7 @@ type Result struct {
 	Account float32
 }
 
+// Display gives a description suitable for a 16x2 LCD display.
 func (r *Result) Display() string {
 	// TODO(mero): Make sure format does not overflow (floating point)
 	return fmt.Sprintf("Card: %x\n%-9s%.2fE", r.UID, r.User, r.Account)
@@ -299,6 +300,7 @@ func (k *Kasse) Authenticate(username string, password []byte) (*User, error) {
 	return user, nil
 }
 
+// ResultToLCD writes the result (or error) to a 16x2 LCD display.
 func ResultToLCD(lcd *lcd2usb.Device, res *Result, err error) error {
 	var r, g, b uint8
 	var text string
