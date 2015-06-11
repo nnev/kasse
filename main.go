@@ -8,8 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/gorilla/context"
@@ -295,50 +293,29 @@ func main() {
 	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
 	k.RegisterHandlers()
 
-	r, err := NewNFCReader("")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		if err := r.Close(); err != nil {
-			log.Println("Error closing reader:", err)
-		}
-	}()
-
-	go http.ListenAndServe(*listen, context.ClearHandler(http.DefaultServeMux))
-
-	sigs := make(chan os.Signal)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	uids := make(chan []byte)
+	events := make(chan NFCEvent)
+	// We have to wrap the call in a func(), because the go statement evaluates
+	// it's arguments in the current goroutine, and the argument to log.Fatal
+	// blocks in these cases.
 	go func() {
-		for {
-			uid, err := r.GetNextUID()
-			if err != nil {
-				log.Println(err)
-				close(sigs)
-				return
-			}
-			uids <- uid
-		}
+		log.Fatal(ConnectAndPollNFCReader("", events))
+	}()
+	go func() {
+		log.Fatal(http.ListenAndServe(*listen, context.ClearHandler(http.DefaultServeMux)))
 	}()
 
-MainLoop:
 	for {
-		select {
-		case uid := <-uids:
-			res, err := k.HandleCard(uid)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-			} else {
-				fmt.Println(res)
-			}
-		case sig := <-sigs:
-			if sig != nil {
-				log.Printf("Got signal %s, exiting\n", sig)
-			}
-			break MainLoop
+		ev := <-events
+		if ev.Err != nil {
+			log.Println(ev.Err)
+			continue
+		}
+
+		res, err := k.HandleCard(ev.UID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		} else {
+			fmt.Println(res)
 		}
 	}
-
 }
