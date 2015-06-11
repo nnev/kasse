@@ -321,7 +321,6 @@ func ResultToLCD(lcd *lcd2usb.Device, res *Result, err error) error {
 		text = err.Error()
 	}
 
-	log.Println(r, g, b)
 	lcd.Color(r, g, b)
 	for i, l := range strings.Split(text, "\n") {
 		lcd.CursorPosition(1, uint8(i+1))
