@@ -7,8 +7,13 @@ import (
 	"time"
 
 	"github.com/fuzxxl/nfc/2.0/nfc"
-	"golang.org/x/net/context"
 )
+
+// NFCEvent contains an event at the NFC reader. Either UID or Err is nil.
+type NFCEvent struct {
+	UID []byte
+	Err error
+}
 
 // DefaultModulation gives defaults for the modulation type and Baudrate.
 // Currently, only nfc.ISO14443a is supported for the type. If the default
@@ -21,83 +26,6 @@ var DefaultModulation = nfc.Modulation{
 
 // PollingInterval gives the interval of polling for new cards.
 var PollingInterval = 100 * time.Millisecond
-
-// Reader abstracts the NFC Reader functions we need, for testing. A Reader
-// must be safe for concurrent use.
-type Reader interface {
-	// GetNextUID blocks until a new card is put on the reader and returns the
-	// UID of the card.
-	GetNextUID() (uid []byte, err error)
-	// Close closes the Reader and cleans up any resources held.
-	Close() error
-}
-
-type nfcReader struct {
-	nfc.Device
-	m nfc.Modulation
-	// uids is used to pass card-uids between goroutines
-	uids chan []byte
-	// errs passes errors from polling
-	errs chan error
-	// used for threadsafe cancellation
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-func (n nfcReader) Close() error {
-	n.cancel()
-	return n.Device.Close()
-}
-
-func (n nfcReader) GetNextUID() (uid []byte, err error) {
-	select {
-	case <-n.ctx.Done():
-		return nil, errors.New("reader is closed")
-	case err := <-n.errs:
-		return nil, err
-	case uid := <-n.uids:
-		return uid, nil
-	}
-}
-
-// startPolling polls for new cards in the reader, until n.done is closed.
-func (n nfcReader) startPolling() {
-	for {
-		targets, err := n.Device.InitiatorListPassiveTargets(n.m)
-		if err != nil {
-			// pass error, if not closed and abort polling
-			select {
-			case <-n.ctx.Done():
-			case n.errs <- err:
-			}
-			return
-		}
-		// TODO: Should we ever get more than one target? Better not (because of
-		// clash-prevention in the reader), but we will just handle it for now.
-		for _, t := range targets {
-			// TODO: Handle other target types
-			tt, ok := t.(*nfc.ISO14443aTarget)
-			if !ok {
-				select {
-				case <-n.ctx.Done():
-				case n.errs <- fmt.Errorf("unsupported card type %T", t):
-				}
-				return
-			}
-			select {
-			case <-n.ctx.Done():
-				return
-			case n.uids <- tt.UID[:tt.UIDLen]:
-			}
-		}
-
-		select {
-		case <-time.After(PollingInterval):
-		case <-n.ctx.Done():
-			return
-		}
-	}
-}
 
 func contains(haystack []int, needle int) bool {
 	for _, v := range haystack {
@@ -140,36 +68,57 @@ func bitrateString(n int) string {
 	return fmt.Sprintf("<unknown: %d>", n)
 }
 
-// NewNFCReader returns a new Reader that uses libnfc to access a physical NFC
-// reader. conn is the reader to connect to - if empty, the first available
+func pollNFC(d nfc.Device, m nfc.Modulation) (uid []byte, err error) {
+	targets, err := d.InitiatorListPassiveTargets(m)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(targets) == 0 {
+		return nil, nil
+	}
+
+	// We assume, that clash-prevention in the reader gives us always
+	// exactly one target.
+	if len(targets) != 1 {
+		log.Printf("Card-clash! Only using first target")
+	}
+
+	t := targets[0]
+	// TODO: Handle other target types
+	tt, ok := t.(*nfc.ISO14443aTarget)
+	if !ok {
+		return nil, fmt.Errorf("unsupported card type %T", t)
+	}
+	return tt.UID[:tt.UIDLen], nil
+}
+
+// ConnectAndPollNFCReader connects to a physical NFC Reader and pools for new
+// cards. conn is the reader to connect to - if empty, the first available
 // reader will be used.
-func NewNFCReader(conn string) (r Reader, err error) {
+func ConnectAndPollNFCReader(conn string, ch chan NFCEvent) error {
 	if DefaultModulation.Type != nfc.ISO14443a {
-		return nil, errors.New("only ISO 14443-A readers are supported for now")
+		return errors.New("only ISO 14443-A readers are supported for now")
 	}
 
 	d, err := nfc.Open(conn)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer func() {
-		if err != nil {
-			d.Close()
-		}
-	}()
+	defer d.Close()
 
 	log.Printf("NFC reader information:\n%s\n", d)
 
 	ms, err := d.SupportedModulations(nfc.InitiatorMode)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	for _, m := range ms {
 		log.Println("Supported modulation type:", modulationString(m))
 	}
 	if len(ms) == 0 {
-		return nil, errors.New("no modulation types supported")
+		return errors.New("no modulation types supported")
 	}
 
 	var m int
@@ -181,10 +130,10 @@ func NewNFCReader(conn string) (r Reader, err error) {
 
 	bs, err := d.SupportedBaudRates(m)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if len(bs) == 0 {
-		return nil, errors.New("no baudrates supported at used modulation")
+		return errors.New("no baudrates supported at used modulation")
 	}
 
 	var b int
@@ -195,17 +144,18 @@ func NewNFCReader(conn string) (r Reader, err error) {
 	}
 
 	if err = d.InitiatorInit(); err != nil {
-		return nil, err
+		return err
 	}
 
-	nr := nfcReader{
-		Device: d,
-		m:      nfc.Modulation{Type: m, BaudRate: b},
-		uids:   make(chan []byte),
-		errs:   make(chan error),
-	}
-	nr.ctx, nr.cancel = context.WithCancel(context.Background())
+	mod := nfc.Modulation{Type: m, BaudRate: b}
 
-	go nr.startPolling()
-	return nr, nil
+	// start polling
+	for {
+		uid, err := pollNFC(d, mod)
+		if uid == nil && err == nil {
+			time.Sleep(PollingInterval)
+			continue
+		}
+		ch <- NFCEvent{uid, err}
+	}
 }
