@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Merovius/go-lcd2usb/lcd2usb"
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -293,6 +294,11 @@ func main() {
 	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
 	k.RegisterHandlers()
 
+	lcd, err := lcd2usb.Open("/dev/ttyACM0", 2, 16)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	events := make(chan NFCEvent)
 	// We have to wrap the call in a func(), because the go statement evaluates
 	// it's arguments in the current goroutine, and the argument to log.Fatal
@@ -316,6 +322,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 		} else {
 			fmt.Println(res)
+			fmt.Fprintln(lcd, res)
 		}
 	}
 }
