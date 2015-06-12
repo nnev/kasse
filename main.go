@@ -300,6 +300,8 @@ func main() {
 	go func() {
 		log.Fatal(ConnectAndPollNFCReader("", events))
 	}()
+
+	RegisterHTTPReader()
 	go func() {
 		log.Fatal(http.ListenAndServe(*listen, context.ClearHandler(http.DefaultServeMux)))
 	}()
