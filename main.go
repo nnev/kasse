@@ -377,6 +377,7 @@ func main() {
 		if res != nil {
 			res.Print(lcd)
 		} else {
+			// TODO: Distinguish between user-facing errors and internal errors
 			flashLCD(lcd, err.Error(), 255, 0, 0)
 		}
 	}
