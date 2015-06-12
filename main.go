@@ -85,6 +85,12 @@ type Result struct {
 func flashLCD(lcd *lcd2usb.Device, text string, r, g, b uint8) error {
 	lcd.Color(r, g, b)
 	for i, l := range strings.Split(text, "\n") {
+		if len(l) > 16 {
+			l = l[:16]
+		}
+		if i > 2 {
+			break
+		}
 		lcd.CursorPosition(1, uint8(i+1))
 		fmt.Fprint(lcd, l)
 	}
