@@ -82,10 +82,35 @@ type Result struct {
 	Account float32
 }
 
-// Display gives a description suitable for a 16x2 LCD display.
-func (r *Result) Display() string {
+func flashLCD(lcd *lcd2usb.Device, text string, r, g, b uint8) error {
+	lcd.Color(r, g, b)
+	for i, l := range strings.Split(text, "\n") {
+		lcd.CursorPosition(1, uint8(i+1))
+		fmt.Fprint(lcd, l)
+	}
+	// TODO: Make flag
+	time.Sleep(time.Second)
+	lcd.Color(0, 0, 255)
+	lcd.Clear()
+	return nil
+}
+
+// Print writes the result to a 16x2 LCD display.
+func (res *Result) Print(lcd *lcd2usb.Device) error {
+	var r, g, b uint8
 	// TODO(mero): Make sure format does not overflow (floating point)
-	return fmt.Sprintf("Card: %x\n%-9s%.2fE", r.UID, r.User, r.Account)
+	text := fmt.Sprintf("Card: %x\n%-9s%.2fE", res.UID, res.User, res.Account)
+	switch res.Code {
+	default:
+		r, g, b = 255, 255, 255
+	case PaymentMade:
+		r, g, b = 0, 255, 0
+	case LowBalance:
+		r, g, b = 255, 50, 0
+	case AccountEmpty:
+		r, g, b = 255, 0, 0
+	}
+	return flashLCD(lcd, text, r, g, b)
 }
 
 // String implements fmt.Stringer.
@@ -300,39 +325,6 @@ func (k *Kasse) Authenticate(username string, password []byte) (*User, error) {
 	return user, nil
 }
 
-// ResultToLCD writes the result (or error) to a 16x2 LCD display.
-func ResultToLCD(lcd *lcd2usb.Device, res *Result, err error) error {
-	var r, g, b uint8
-	var text string
-	if res != nil {
-		text = res.Display()
-		switch res.Code {
-		default:
-			r, g, b = 255, 255, 255
-		case PaymentMade:
-			r, g, b = 0, 255, 0
-		case LowBalance:
-			r, g, b = 255, 50, 0
-		case AccountEmpty:
-			r, g, b = 255, 0, 0
-		}
-	} else {
-		r, g, b = 255, 0, 0
-		text = err.Error()
-	}
-
-	lcd.Color(r, g, b)
-	for i, l := range strings.Split(text, "\n") {
-		lcd.CursorPosition(1, uint8(i+1))
-		fmt.Fprint(lcd, l)
-	}
-	// TODO: Make flag
-	time.Sleep(time.Second)
-	lcd.Color(0, 0, 255)
-	lcd.Clear()
-	return nil
-}
-
 func main() {
 	flag.Parse()
 
@@ -376,6 +368,10 @@ func main() {
 		}
 
 		res, err := k.HandleCard(ev.UID)
-		ResultToLCD(lcd, res, err)
+		if res != nil {
+			res.Print(lcd)
+		} else {
+			flashLCD(lcd, err.Error(), 255, 0, 0)
+		}
 	}
 }
