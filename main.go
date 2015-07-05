@@ -36,6 +36,7 @@ func init() {
 // parallel testing possible.
 type Kasse struct {
 	db       *sqlx.DB
+	log      *log.Logger
 	sessions sessions.Store
 }
 
@@ -166,7 +167,7 @@ var ErrWrongAuth = errors.New("wrong username or password")
 // no balance left on the account. The account is charged if and only if the
 // returned error is nil.
 func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
-	log.Printf("Card %x was swiped", uid)
+	k.log.Printf("Card %x was swiped", uid)
 
 	tx, err := k.db.Beginx()
 	if err != nil {
@@ -177,22 +178,22 @@ func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	// Get user this card belongs to
 	var user User
 	if err := tx.Get(&user, `SELECT users.user_id, name, password FROM cards LEFT JOIN users ON cards.user_id = users.user_id WHERE card_id = $1`, uid); err != nil {
-		log.Println("Card not found in database")
+		k.log.Println("Card not found in database")
 		return nil, ErrCardNotFound
 	}
-	log.Printf("Card belongs to %v", user.Name)
+	k.log.Printf("Card belongs to %v", user.Name)
 
 	// Get account balance of this user
 	var balance int64
 	var b sql.NullInt64
 	if err := tx.Get(&b, `SELECT SUM(amount) FROM transactions WHERE user_id = $1`, user.ID); err != nil {
-		log.Println("Could not get balance:", err)
+		k.log.Println("Could not get balance:", err)
 		return nil, err
 	}
 	if b.Valid {
 		balance = b.Int64
 	}
-	log.Printf("Account balance is %d", balance)
+	k.log.Printf("Account balance is %d", balance)
 
 	res := &Result{
 		UID:     uid,
@@ -214,12 +215,12 @@ func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	}
 
 	if balance < 600 {
-		log.Println("balance is low")
+		k.log.Println("balance is low")
 		res.Code = LowBalance
 	} else {
 		res.Code = PaymentMade
 	}
-	log.Println("returning")
+	k.log.Println("returning")
 	return res, nil
 }
 
@@ -227,7 +228,7 @@ func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 // and password. It returns a populated User and no error on success. If the
 // username is already taken, it returns ErrUserExists.
 func (k *Kasse) RegisterUser(name string, password []byte) (*User, error) {
-	log.Printf("Registering user %s", name)
+	k.log.Printf("Registering user %s", name)
 
 	tx, err := k.db.Beginx()
 	if err != nil {
@@ -275,7 +276,7 @@ func (k *Kasse) RegisterUser(name string, password []byte) (*User, error) {
 // populated card struct. It returns ErrCardExists if a card with the given UID
 // already exists.
 func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
-	log.Printf("Adding card %x for owner %s", uid, owner.Name)
+	k.log.Printf("Adding card %x for owner %s", uid, owner.Name)
 
 	tx, err := k.db.Beginx()
 	if err != nil {
@@ -287,7 +288,7 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 	// from an insert can't be checked programatically.
 	var card Card
 	if err := tx.Get(&card, `SELECT card_id, user_id FROM cards WHERE card_id = $1`, uid); err == nil {
-		log.Println("Card already exists, current owner", card.User)
+		k.log.Println("Card already exists, current owner", card.User)
 		return nil, ErrCardExists
 	} else if err != sql.ErrNoRows {
 		return nil, err
@@ -301,7 +302,7 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 		return nil, err
 	}
 
-	log.Println("Card added successfully")
+	k.log.Println("Card added successfully")
 
 	card.ID = uid
 	card.User = owner.ID
@@ -313,7 +314,7 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 // returns ErrWrongAuth, if the user or password was wrong. If no error
 // occured, it will return a fully populated User.
 func (k *Kasse) Authenticate(username string, password []byte) (*User, error) {
-	log.Printf("Verifying user %v", username)
+	k.log.Printf("Verifying user %v", username)
 	delay := time.After(200 * time.Millisecond)
 	defer func() {
 		<-delay
@@ -321,20 +322,20 @@ func (k *Kasse) Authenticate(username string, password []byte) (*User, error) {
 
 	user := new(User)
 	if err := k.db.Get(user, `SELECT user_id, name, password FROM users WHERE name = $1`, username); err == sql.ErrNoRows {
-		log.Printf("No such user %v", username)
+		k.log.Printf("No such user %v", username)
 		return nil, ErrWrongAuth
 	} else if err != nil {
 		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.Password, password); err == bcrypt.ErrMismatchedHashAndPassword {
-		log.Println("Wrong password")
+		k.log.Println("Wrong password")
 		return nil, ErrWrongAuth
 	} else if err != nil {
 		return nil, err
 	}
 
-	log.Printf("Successfully authenticated %v", username)
+	k.log.Printf("Successfully authenticated %v", username)
 	return user, nil
 }
 
@@ -351,7 +352,7 @@ func (k *Kasse) GetCards(user User) ([]Card, error) {
 func (k *Kasse) GetBalance(user User) (int64, error) {
 	var b sql.NullInt64
 	if err := k.db.Get(&b, `SELECT SUM(amount) FROM transactions WHERE user_id = $1`, user.ID); err != nil {
-		log.Println("Could not get balance:", err)
+		k.log.Println("Could not get balance:", err)
 		return 0, err
 	}
 	return b.Int64, nil
@@ -361,6 +362,7 @@ func main() {
 	flag.Parse()
 
 	var k Kasse
+	k.log = log.New(os.Stderr, "", log.LstdFlags)
 
 	if db, err := sqlx.Connect(*driver, *connect); err != nil {
 		log.Fatal("Could not open database:", err)
