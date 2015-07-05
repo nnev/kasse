@@ -49,8 +49,9 @@ type User struct {
 
 // Card represents a card in the system (as in the database schema).
 type Card struct {
-	ID   []byte `db:"card_id"`
-	User int    `db:"user_id"`
+	ID          []byte `db:"card_id"`
+	User        int    `db:"user_id"`
+	Description string `db:"description"`
 }
 
 // Transaction represents a transaction in the system (as in the database
@@ -294,7 +295,7 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 		return nil, err
 	}
 
-	if _, err := tx.Exec(`INSERT INTO cards (card_id, user_id) VALUES ($1, $2)`, uid, owner.ID); err != nil {
+	if _, err := tx.Exec(`INSERT INTO cards (card_id, user_id, description) VALUES ($1, $2, '')`, uid, owner.ID); err != nil {
 		return nil, err
 	}
 
@@ -342,7 +343,7 @@ func (k *Kasse) Authenticate(username string, password []byte) (*User, error) {
 // GetCards gets all cards for a given user.
 func (k *Kasse) GetCards(user User) ([]Card, error) {
 	var cards []Card
-	if err := k.db.Select(&cards, `SELECT card_id, user_id FROM cards WHERE user_id = $1`, user.ID); err != nil {
+	if err := k.db.Select(&cards, `SELECT card_id, user_id, description FROM cards WHERE user_id = $1`, user.ID); err != nil {
 		return nil, err
 	}
 	return cards, nil
