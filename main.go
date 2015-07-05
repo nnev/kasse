@@ -338,6 +338,25 @@ func (k *Kasse) Authenticate(username string, password []byte) (*User, error) {
 	return user, nil
 }
 
+// GetCards gets all cards for a given user.
+func (k *Kasse) GetCards(user User) ([]Card, error) {
+	var cards []Card
+	if err := k.db.Select(&cards, `SELECT card_id, user_id FROM cards WHERE user_id = $1`, user.ID); err != nil {
+		return nil, err
+	}
+	return cards, nil
+}
+
+// GetBalance gets the current balance for a given user.
+func (k *Kasse) GetBalance(user User) (int64, error) {
+	var b sql.NullInt64
+	if err := k.db.Get(&b, `SELECT SUM(amount) FROM transactions WHERE user_id = $1`, user.ID); err != nil {
+		log.Println("Could not get balance:", err)
+		return 0, err
+	}
+	return b.Int64, nil
+}
+
 func main() {
 	flag.Parse()
 
