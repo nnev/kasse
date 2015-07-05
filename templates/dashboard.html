@@ -1,0 +1,31 @@
+<h1>Dashboard ccchd-Kasse</h1>
+
+<h2>Allgemeine Daten</h2>
+
+<table>
+	<tr>
+		<th>User</th>
+		<td>{{ .User.Name }}</td>
+	</tr>
+	<tr>
+		<th>Kontostand</th>
+		<td>{{ .Balance }}€</th>
+	</tr>
+</table>
+
+<h2>Registrierte Karten</h2>
+
+{{ if .Cards }}
+<table>
+	<tr>
+		<th>UID</th>
+	</tr>
+{{ range .Cards }}
+	<tr>
+		<td>{{ printf "%x" .ID }}</td>
+	</tr>
+{{ end }}
+</table>
+{{ else }}
+<p>Keine</p>
+{{ end }}

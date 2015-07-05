@@ -65,9 +65,56 @@ func (k *Kasse) PostLoginPage(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, redirect, http.StatusFound)
 }
 
+func (k *Kasse) GetDashboard(res http.ResponseWriter, req *http.Request) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	user := ui.(User)
+
+	cards, err := k.GetCards(user)
+	if err != nil {
+		log.Printf("Could not get cards for user %q: %v", user.Name, err)
+		http.Error(res, "Internal error", 500)
+		return
+	}
+
+	balance, err := k.GetBalance(user)
+	if err != nil {
+		log.Println("Could not get balance for user %q: %v", user.Name, err)
+		http.Error(res, "Internal error", 500)
+		return
+	}
+
+	res.Header().Set("Content-Type", "text/html")
+
+	data := struct {
+		User    User
+		Balance float32
+		Cards   []Card
+	}{
+		User:    user,
+		Balance: float32(balance) / 100,
+		Cards:   cards,
+	}
+
+	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "dashboard.html", Data: data}); err != nil {
+		log.Println("Could not render template:", err)
+		http.Error(res, "Internal error", 500)
+		return
+	}
+}
+
 // Handlers returns a http.Handler for the webinterface.
 func (k *Kasse) Handler() http.Handler {
 	r := mux.NewRouter()
+	r.Methods("GET").Path("/").HandlerFunc(k.GetDashboard)
 	r.Methods("GET").Path("/login.html").HandlerFunc(k.GetLoginPage)
 	r.Methods("POST").Path("/login.html").HandlerFunc(k.PostLoginPage)
 	return r
