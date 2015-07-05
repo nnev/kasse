@@ -19,10 +19,12 @@
 <table>
 	<tr>
 		<th>UID</th>
+		<th>Bezeichnung</th>
 	</tr>
 {{ range .Cards }}
 	<tr>
 		<td>{{ printf "%x" .ID }}</td>
+		<td>{{ .Description }}</td>
 	</tr>
 {{ end }}
 </table>

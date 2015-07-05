@@ -24,6 +24,8 @@ CREATE TABLE cards (
 	card_id BINARY NOT NULL,
 	-- user_id is the user this card belongs to.
 	user_id INTEGER,
+	-- description is a freetext to use as an identifier.
+	description TEXT,
 
 	-- constraints
 	PRIMARY KEY (card_id),
