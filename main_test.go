@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"log"
 	"testing"
 	"time"
 
@@ -10,6 +11,19 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type testWriter struct {
+	*testing.T
+}
+
+func (t testWriter) Write(b []byte) (n int, err error) {
+	t.Log(string(b))
+	return len(b), nil
+}
+
+func testLogger(t *testing.T) *log.Logger {
+	return log.New(testWriter{t}, "", 0)
+}
 
 type TestReader []struct {
 	UID []byte
@@ -65,7 +79,7 @@ func insertData(t *testing.T, db *sqlx.DB, us []User, cs []Card, ts []Transactio
 func TestHandleCard(t *testing.T) {
 	t.Parallel()
 
-	k := Kasse{db: createDB(t)}
+	k := Kasse{db: createDB(t), log: testLogger(t)}
 	defer k.db.Close()
 
 	insertData(t, k.db, []User{
@@ -119,7 +133,7 @@ func TestHandleCard(t *testing.T) {
 func TestRegistration(t *testing.T) {
 	t.Parallel()
 
-	k := Kasse{db: createDB(t)}
+	k := Kasse{db: createDB(t), log: testLogger(t)}
 	defer k.db.Close()
 
 	tcs := []struct {
@@ -156,7 +170,7 @@ func TestRegistration(t *testing.T) {
 func TestAddCard(t *testing.T) {
 	t.Parallel()
 
-	k := Kasse{db: createDB(t)}
+	k := Kasse{db: createDB(t), log: testLogger(t)}
 	defer k.db.Close()
 
 	mero := &User{ID: 1, Name: "Merovius", Password: []byte("password")}
@@ -225,7 +239,7 @@ func usersAreEqual(a, b *User) bool {
 func TestAuthentication(t *testing.T) {
 	t.Parallel()
 
-	k := Kasse{db: createDB(t)}
+	k := Kasse{db: createDB(t), log: testLogger(t)}
 	defer k.db.Close()
 
 	// bcrypt hash of "foobar"

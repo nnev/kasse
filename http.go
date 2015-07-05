@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -12,7 +11,7 @@ func (k *Kasse) GetLoginPage(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/html")
 
 	if err := ExecuteTemplate(res, TemplateInput{Title: "Login", Body: "login.html"}); err != nil {
-		log.Println("Could not render template:", err)
+		k.log.Println("Could not render template:", err)
 		http.Error(res, "Internal error", 500)
 		return
 	}
@@ -35,7 +34,7 @@ func (k *Kasse) PostLoginPage(res http.ResponseWriter, req *http.Request) {
 
 	user, err := k.Authenticate(username, password)
 	if err != nil && err != ErrWrongAuth {
-		log.Println("Error authenticating:", err)
+		k.log.Println("Error authenticating:", err)
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
 		http.Error(res, "Internal server error", http.StatusInternalServerError)
@@ -43,7 +42,7 @@ func (k *Kasse) PostLoginPage(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if user == nil {
-		log.Println("Wrong username or password")
+		k.log.Println("Wrong username or password")
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
 		http.Error(res, "Wrong username or password", http.StatusUnauthorized)
@@ -59,7 +58,7 @@ func (k *Kasse) PostLoginPage(res http.ResponseWriter, req *http.Request) {
 	}
 	session.Values["user"] = user
 	if err := session.Save(req, res); err != nil {
-		log.Printf("Error saving session: %v", err)
+		k.log.Printf("Error saving session: %v", err)
 	}
 
 	http.Redirect(res, req, redirect, http.StatusFound)
@@ -80,14 +79,14 @@ func (k *Kasse) GetDashboard(res http.ResponseWriter, req *http.Request) {
 
 	cards, err := k.GetCards(user)
 	if err != nil {
-		log.Printf("Could not get cards for user %q: %v", user.Name, err)
+		k.log.Printf("Could not get cards for user %q: %v", user.Name, err)
 		http.Error(res, "Internal error", 500)
 		return
 	}
 
 	balance, err := k.GetBalance(user)
 	if err != nil {
-		log.Println("Could not get balance for user %q: %v", user.Name, err)
+		k.log.Println("Could not get balance for user %q: %v", user.Name, err)
 		http.Error(res, "Internal error", 500)
 		return
 	}
@@ -105,7 +104,7 @@ func (k *Kasse) GetDashboard(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "dashboard.html", Data: data}); err != nil {
-		log.Println("Could not render template:", err)
+		k.log.Println("Could not render template:", err)
 		http.Error(res, "Internal error", 500)
 		return
 	}

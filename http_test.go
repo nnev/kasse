@@ -33,7 +33,7 @@ func createResponse(req *http.Request, res *httptest.ResponseRecorder) *http.Res
 }
 
 func TestLogin(t *testing.T) {
-	k := Kasse{db: createDB(t)}
+	k := Kasse{db: createDB(t), log: testLogger(t)}
 	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
 	h := k.Handler()
 
