@@ -9,8 +9,12 @@ import (
 
 // GetLoginPage renders the login page to the user.
 func (k *Kasse) GetLoginPage(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "text/html")
+
 	if err := ExecuteTemplate(res, TemplateInput{Title: "Login", Body: "login.html"}); err != nil {
 		log.Println("Could not render template:", err)
+		http.Error(res, "Internal error", 500)
+		return
 	}
 }
 
@@ -30,7 +34,7 @@ func (k *Kasse) PostLoginPage(res http.ResponseWriter, req *http.Request) {
 	}
 
 	user, err := k.Authenticate(username, password)
-	if err != nil {
+	if err != nil && err != ErrWrongAuth {
 		log.Println("Error authenticating:", err)
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
@@ -54,16 +58,17 @@ func (k *Kasse) PostLoginPage(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 	session.Values["user"] = user
-	session.Save(req, res)
+	if err := session.Save(req, res); err != nil {
+		log.Printf("Error saving session: %v", err)
+	}
 
 	http.Redirect(res, req, redirect, http.StatusFound)
 }
 
-// RegisterSessionHandler registers all handlers necessary for authentication
-// and session handling.
-func (k *Kasse) RegisterHandlers() {
+// Handlers returns a http.Handler for the webinterface.
+func (k *Kasse) Handler() http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path("/login.html").HandlerFunc(k.GetLoginPage)
 	r.Methods("POST").Path("/login.html").HandlerFunc(k.PostLoginPage)
-	http.Handle("/", r)
+	return r
 }

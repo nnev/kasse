@@ -2,16 +2,19 @@ package main
 
 import (
 	"database/sql"
+	"encoding/gob"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/Merovius/go-lcd2usb/lcd2usb"
 	"github.com/gorilla/context"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -24,6 +27,10 @@ var (
 	connect = flag.String("connect", "kasse.sqlite", "The connection specification for the database")
 	listen  = flag.String("listen", "localhost:9000", "Where to listen for HTTP connections")
 )
+
+func init() {
+	gob.Register(User{})
+}
 
 // Kasse collects all state of the application in a central type, to make
 // parallel testing possible.
@@ -348,7 +355,7 @@ func main() {
 	}()
 
 	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
-	k.RegisterHandlers()
+	http.Handle("/", handlers.LoggingHandler(os.Stderr, k.Handler()))
 
 	lcd, err := lcd2usb.Open("/dev/ttyACM0", 2, 16)
 	if err != nil {
