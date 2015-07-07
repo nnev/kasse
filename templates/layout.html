@@ -3,8 +3,23 @@
 	<head>
 		<meta charset="UTF-8">
 		<title>{{ .Title }}</title>
+		<link rel="stylesheet" href="/static/material.min.css">
+		<link rel="stylesheet" href="/static/main.css">
+		<script src="/static/material.min.js"></script>
+		<!-- TODO: Host font locally -->
+		<link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
 	</head>
 	<body>
-		{{ template "content" .Data }}
+		<div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+		  <header class="mdl-layout__header">
+			<div class="mdl-layout__header-row">
+			  <!-- Title -->
+			  <span class="mdl-layout-title">{{ .Title }}</span>
+			</div>
+		  </header>
+		  <main class="mdl-layout__content">
+			<div class="page-content">{{ template "content" .Data }}</div>
+		  </main>
+		</div>
 	</body>
 </html>

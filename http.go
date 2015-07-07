@@ -114,6 +114,7 @@ func (k *Kasse) GetDashboard(res http.ResponseWriter, req *http.Request) {
 func (k *Kasse) Handler() http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path("/").HandlerFunc(k.GetDashboard)
+	r.Methods("GET").PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	r.Methods("GET").Path("/login.html").HandlerFunc(k.GetLoginPage)
 	r.Methods("POST").Path("/login.html").HandlerFunc(k.PostLoginPage)
 	return r
