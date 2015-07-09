@@ -110,6 +110,21 @@ func (k *Kasse) GetDashboard(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// GetLogout logs out the user immediately and redirect to the login page.
+func (k *Kasse) GetLogout(res http.ResponseWriter, req *http.Request) {
+	defer http.Redirect(res, req, "/login.html", 302)
+
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		return
+	}
+
+	delete(session.Values, "user")
+	if err := session.Save(req, res); err != nil {
+		k.log.Printf("Error saving session: %v", err)
+	}
+}
+
 // Handlers returns a http.Handler for the webinterface.
 func (k *Kasse) Handler() http.Handler {
 	r := mux.NewRouter()
@@ -117,5 +132,6 @@ func (k *Kasse) Handler() http.Handler {
 	r.Methods("GET").PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	r.Methods("GET").Path("/login.html").HandlerFunc(k.GetLoginPage)
 	r.Methods("POST").Path("/login.html").HandlerFunc(k.PostLoginPage)
+	r.Methods("GET").Path("/logout.html").HandlerFunc(k.GetLogout)
 	return r
 }
