@@ -15,6 +15,8 @@ type HTTPReader struct {
 	k *Kasse
 }
 
+// RegisterHTTPReader returns a registered HTTPReader, that listens on
+// /reader and adds some basic handlers to simulate card-swipes.
 func RegisterHTTPReader() (*HTTPReader, error) {
 	r := mux.NewRouter()
 	r.Methods("GET").Path("/reader/").HandlerFunc(HTTPReader{}.Index)
@@ -56,6 +58,7 @@ var (
 </html>`))
 )
 
+// Index renders a basic Index page for a simulated card-reader.
 func (r HTTPReader) Index(res http.ResponseWriter, req *http.Request) {
 	var cards []Card
 
@@ -69,6 +72,7 @@ func (r HTTPReader) Index(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// Swipe accepts a POST-request to simulate a swiped card.
 func (r HTTPReader) Swipe(res http.ResponseWriter, req *http.Request) {
 	var uid []byte
 	fmt.Sscanf(req.FormValue("uid"), "%x", &uid)
