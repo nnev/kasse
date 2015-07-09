@@ -127,7 +127,7 @@ func (k *Kasse) GetLogout(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Handlers returns a http.Handler for the webinterface.
+// Handler returns a http.Handler for the webinterface.
 func (k *Kasse) Handler() http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path("/").HandlerFunc(k.GetDashboard)
