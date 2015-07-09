@@ -93,16 +93,25 @@ func (k *Kasse) GetDashboard(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	transactions, err := k.GetTransactions(user, 5)
+	if err != nil {
+		k.log.Printf("Could not get transactions for user %q: %v", user.Name, err)
+		http.Error(res, "Internal error", 500)
+		return
+	}
+
 	res.Header().Set("Content-Type", "text/html")
 
 	data := struct {
-		User    User
-		Balance float32
-		Cards   []Card
+		User         User
+		Balance      float32
+		Cards        []Card
+		Transactions []Transaction
 	}{
-		User:    user,
-		Balance: float32(balance) / 100,
-		Cards:   cards,
+		User:         user,
+		Balance:      float32(balance) / 100,
+		Cards:        cards,
+		Transactions: transactions,
 	}
 
 	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "dashboard.html", Data: data}); err != nil {

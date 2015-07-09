@@ -130,6 +130,67 @@ func TestHandleCard(t *testing.T) {
 	}
 }
 
+func TestGetTransactions(t *testing.T) {
+	t.Parallel()
+
+	k := Kasse{db: createDB(t), log: testLogger(t)}
+	defer k.db.Close()
+
+	mero := User{ID: 1, Name: "Merovius", Password: []byte("password")}
+	koebi := User{ID: 2, Name: "Koebi", Password: []byte("password1")}
+
+	insertData(t, k.db, []User{
+		mero,
+		koebi,
+	}, []Card{
+		{ID: []byte("aaaa"), User: 1},
+		{ID: []byte("aaab"), User: 1},
+		{ID: []byte("baaa"), User: 2},
+		{ID: []byte("baab"), User: 2},
+	}, []Transaction{
+		{ID: 1, User: 1, Card: nil, Time: time.Date(2015, 4, 6, 22, 59, 3, 0, time.FixedZone("TST", 3600)), Amount: 1000, Kind: "Aufladung"},
+		{ID: 2, User: 1, Card: []byte("aaaa"), Time: time.Date(2015, 4, 6, 23, 5, 27, 0, time.FixedZone("TST", 3600)), Amount: -100, Kind: "Kartenswipe"},
+		{ID: 3, User: 1, Card: []byte("aaab"), Time: time.Date(2015, 4, 6, 23, 7, 23, 0, time.FixedZone("TST", 3600)), Amount: -100, Kind: "Kartenswipe"},
+	})
+
+	tcs := []struct {
+		user    User
+		n       int
+		wantErr error
+		amounts []int
+	}{
+		{koebi, 0, nil, nil},
+		{koebi, 23, nil, nil},
+		{mero, 2, nil, []int{-100, -100}},
+		{mero, 0, nil, []int{-100, -100, 1000}},
+	}
+
+	for _, tc := range tcs {
+		got, gotErr := k.GetTransactions(tc.user, tc.n)
+		if tc.wantErr != nil {
+			if gotErr != tc.wantErr {
+				t.Errorf("GetTransactions(%v, %v) == (%v, %v), want (_, %v)", tc.user.Name, tc.n, got, gotErr, tc.wantErr)
+			}
+			continue
+		} else if gotErr != nil {
+			t.Errorf("GetTransactions(%v, %v) == (%v, %v), want (_, %v)", tc.user.Name, tc.n, got, gotErr, nil)
+			continue
+		}
+
+		if len(got) != len(tc.amounts) {
+			t.Errorf("GetTransactions(%v, %v) == (%v, %v), want %v", tc.user.Name, tc.n, got, gotErr, tc.amounts)
+			continue
+		}
+
+		for i := range got {
+			if got[i].Amount != tc.amounts[i] {
+				t.Errorf("GetTransactions(%v, %v) == (%v, %v), want %v", tc.user.Name, tc.n, got, gotErr, tc.amounts)
+				continue
+			}
+		}
+	}
+}
+
 func TestRegistration(t *testing.T) {
 	t.Parallel()
 

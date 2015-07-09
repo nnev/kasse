@@ -52,4 +52,43 @@
 	  </div>
 	</div>
   </div>
+
+  <!-- Last transactions -->
+  <div class="mdl-cell mdl-cell--4-col">
+	<div class="mdl-card mdl-shadow--2dp card-last-transactions">
+	  <div class="mdl-card__title">
+		<h2 class="mdl-card__title-text">Letzte Transaktionen</h2>
+	  </div>
+
+	  <div class="mdl-card__media">
+		{{ if .Transactions }}
+		<table class="mdl-data-table mdl-js-data-table">
+		  <thead>
+			<tr>
+				<th class="mdl-data-table__cell--non-numeric">Karte</th>
+				<th class="mdl-data-table__cell--non-numeric">Zeit</th>
+				<th>Betrag</th>
+			</tr>
+		  </thead>
+		  <tbody>
+            {{ range .Transactions }}
+			<tr>
+				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .Card }}</td>
+				<td class="mdl-data-table__cell--non-numeric">{{ .Time.Format "2006-01-02 15:04" }}</td>
+				<td class="mdl-data-table__cell--non-numeric">{{ toEuros .Amount }}€</td>
+			</tr>
+            {{ end }}
+		  </tbody>
+		</table>
+		{{ else }}
+		<div class="no-transactions">Keine</div>
+		{{ end }}
+	  </div>
+	  <div class="mdl-card__actions mdl-card--border">
+        <button class="mdl-button mdl-button--accent mdl-jso-button mdl-js-ripple-effect">
+          Mehr
+        </button>
+	  </div>
+	</div>
+  </div>
 </div>

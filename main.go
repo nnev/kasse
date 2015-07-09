@@ -360,6 +360,22 @@ func (k *Kasse) GetBalance(user User) (int64, error) {
 	return b.Int64, nil
 }
 
+// GetTransactions gets the last n transactions for a given user. If n ≤ 0, all
+// transactions are returnsed.
+func (k *Kasse) GetTransactions(user User, n int) ([]Transaction, error) {
+	var transactions []Transaction
+	var err error
+	if n <= 0 {
+		err = k.db.Select(&transactions, `SELECT user_id, card_id, time, amount, kind FROM transactions WHERE user_id = $1 ORDER BY time DESC`, user.ID)
+	} else {
+		err = k.db.Select(&transactions, `SELECT user_id, card_id, time, amount, kind FROM transactions WHERE user_id = $1 ORDER BY time DESC LIMIT $2`, user.ID, n)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return transactions, nil
+}
+
 func main() {
 	flag.Parse()
 

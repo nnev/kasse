@@ -72,7 +72,7 @@ func TestLogin(t *testing.T) {
 		{"POST", "http://localhost:9000/login.html", url.Values{"username": []string{"koebi"}, "password": []string{"foobar"}}, http.StatusUnauthorized, nil, ""},
 		{"POST", "http://localhost:9000/login.html", url.Values{"username": []string{"Merovius"}, "password": []string{"foobaz"}}, http.StatusUnauthorized, nil, ""},
 		{"POST", "http://localhost:9000/login.html", url.Values{"username": []string{"Merovius"}, "password": []string{"foobar"}}, http.StatusFound, map[string]string{"Location": "/"}, ""},
-		{"GET", "http://localhost:9000/", nil, http.StatusOK, map[string]string{"Content-Type": "text/html"}, "Dashboard ccchd-Kasse"},
+		{"GET", "http://localhost:9000/", nil, http.StatusOK, map[string]string{"Content-Type": "text/html"}, "<title>ccchd Kasse</title>"},
 	}
 
 	for _, tc := range tests {

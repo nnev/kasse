@@ -42,3 +42,15 @@
 	padding: 1em;
 	background: inherit;
 }
+
+.card-last-transactions {
+	min-width: 25em;
+}
+
+.card-last-transactions .mdl-card__title {
+	background: rgb(0, 188, 212);
+}
+
+.card-last-transactions table {
+	width: 100%;
+}
