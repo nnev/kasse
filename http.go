@@ -86,7 +86,7 @@ func (k *Kasse) GetDashboard(res http.ResponseWriter, req *http.Request) {
 
 	balance, err := k.GetBalance(user)
 	if err != nil {
-		k.log.Println("Could not get balance for user %q: %v", user.Name, err)
+		k.log.Printf("Could not get balance for user %q: %v", user.Name, err)
 		http.Error(res, "Internal error", 500)
 		return
 	}
