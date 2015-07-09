@@ -23,9 +23,10 @@ import (
 
 var (
 	// Defaults for development
-	driver  = flag.String("sql-driver", "sqlite3", "The SQL driver to use for the database")
-	connect = flag.String("connect", "kasse.sqlite", "The connection specification for the database")
-	listen  = flag.String("listen", "localhost:9000", "Where to listen for HTTP connections")
+	driver   = flag.String("sql-driver", "sqlite3", "The SQL driver to use for the database")
+	connect  = flag.String("connect", "kasse.sqlite", "The connection specification for the database")
+	listen   = flag.String("listen", "localhost:9000", "Where to listen for HTTP connections")
+	hardware = flag.Bool("hardware", true, "Whether hardware is plugged in")
 )
 
 func init() {
@@ -379,18 +380,23 @@ func main() {
 	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
 	http.Handle("/", handlers.LoggingHandler(os.Stderr, k.Handler()))
 
-	lcd, err := lcd2usb.Open("/dev/ttyACM0", 2, 16)
-	if err != nil {
-		log.Fatal(err)
+	var lcd *lcd2usb.Device
+	if *hardware {
+		var err error
+		if lcd, err = lcd2usb.Open("/dev/ttyACM0", 2, 16); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	events := make(chan NFCEvent)
 	// We have to wrap the call in a func(), because the go statement evaluates
 	// it's arguments in the current goroutine, and the argument to log.Fatal
 	// blocks in these cases.
-	go func() {
-		log.Fatal(ConnectAndPollNFCReader("", events))
-	}()
+	if *hardware {
+		go func() {
+			log.Fatal(ConnectAndPollNFCReader("", events))
+		}()
+	}
 
 	RegisterHTTPReader()
 	go func() {
