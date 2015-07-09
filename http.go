@@ -64,6 +64,8 @@ func (k *Kasse) PostLoginPage(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, redirect, http.StatusFound)
 }
 
+// GetDashboard renders a basic dashboard, containing the most important
+// information and actions for an account.
 func (k *Kasse) GetDashboard(res http.ResponseWriter, req *http.Request) {
 	session, err := k.sessions.Get(req, "nnev-kasse")
 	if err != nil {
