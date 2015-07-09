@@ -1,33 +1,55 @@
-<h1>Dashboard ccchd-Kasse</h1>
+<div class="demo-grid-1 mdl-grid">
+  <!-- Account data -->
+  <div class="mdl-cell mdl-cell--4-col card-account-data">
+	<div class="mdl-card mdl-shadow--2dp">
+	  <div class="mdl-card__title">
+		<h2 class="mdl-card__title-text">{{ .User.Name }}</h2>
+	  </div>
+	  <div class="mdl-card__media card-account-data--balance">
+        <div>{{ .Balance }}€</div>
+	  </div>
+	  <div class="mdl-card__actions mdl-card--border">
+        <button class="mdl-button mdl-button--accent mdl-jso-button mdl-js-ripple-effect">
+          Aufladen
+        </button>
+	  </div>
+	</div>
+  </div>
 
-<h2>Allgemeine Daten</h2>
+  <!-- Registered tags -->
+  <div class="mdl-cell mdl-cell--4-col">
+	<div class="mdl-card mdl-shadow--2dp card-registered-tags">
+	  <div class="mdl-card__title">
+		<h2 class="mdl-card__title-text">Registrierte Karten</h2>
+	  </div>
 
-<table>
-	<tr>
-		<th>User</th>
-		<td>{{ .User.Name }}</td>
-	</tr>
-	<tr>
-		<th>Kontostand</th>
-		<td>{{ .Balance }}€</th>
-	</tr>
-</table>
-
-<h2>Registrierte Karten</h2>
-
-{{ if .Cards }}
-<table>
-	<tr>
-		<th>UID</th>
-		<th>Bezeichnung</th>
-	</tr>
-{{ range .Cards }}
-	<tr>
-		<td>{{ printf "%x" .ID }}</td>
-		<td>{{ .Description }}</td>
-	</tr>
-{{ end }}
-</table>
-{{ else }}
-<p>Keine</p>
-{{ end }}
+	  <div class="mdl-card__media">
+		{{ if .Cards }}
+		<table class="mdl-data-table mdl-js-data-table">
+		  <thead>
+			<tr>
+				<th class="mdl-data-table__cell--non-numeric">UID</th>
+				<th class="mdl-data-table__cell--non-numeric">Bezeichnung</th>
+			</tr>
+		  </thead>
+		  <tbody>
+            {{ range .Cards }}
+			<tr>
+				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .ID }}</td>
+				<td class="mdl-data-table__cell--non-numeric">{{ .Description }}</td>
+			</tr>
+            {{ end }}
+		  </tbody>
+		</table>
+		{{ else }}
+		<div class="no-registered-tags">Keine</div>
+		{{ end }}
+	  </div>
+	  <div class="mdl-card__menu">
+        <button class="mdl-button mdl-button--fab mdl-button--mini-fab mdl-button--colored mdl-js-button mdl-js-ripple-effect">
+          <i class="material-icons">add</i>
+        </button>
+	  </div>
+	</div>
+  </div>
+</div>
