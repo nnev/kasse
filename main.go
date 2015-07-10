@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Merovius/go-lcd2usb/lcd2usb"
 	"github.com/gorilla/context"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
+	"merovius.de/go-misc/lcd2usb"
 )
 
 var (
