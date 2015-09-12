@@ -10,3 +10,6 @@ install:
 
 script:
     - go test -tags nonfc ./...
+
+notifications:
+    email: false
