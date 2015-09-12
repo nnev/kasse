@@ -38,8 +38,17 @@ func init() {
 		if err != nil {
 			log.Fatalf("Could not read %q: %v", f, err)
 		}
-		t := template.Must(template.New("page").Parse(string(layout)))
+
+		t := template.New("page")
+		t.Funcs(map[string]interface{}{
+			"toEuros": func(x int) float64 {
+				return float64(x) / 100
+			},
+		})
+
+		t = template.Must(t.Parse(string(layout)))
 		template.Must(t.New("content").Parse(string(content)))
+
 		parsedTemplates[filepath.Base(f)] = t
 	}
 }
