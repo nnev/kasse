@@ -2,9 +2,11 @@ language: go
 
 go:
     - tip
+    - 1.5
+    - 1.3.3
 
 install:
-    - go get -tags nonfc -insecure -v github.com/nnev/kasse
+    - go get -tags nonfc $([ "$TRAVIS_GO_VERSION" != "1.3.3" ] && echo "-insecure") -v github.com/nnev/kasse
 
 script:
     - go test -tags nonfc ./...
