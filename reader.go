@@ -1,3 +1,5 @@
+// +build !nonfc
+
 package main
 
 import (
@@ -8,12 +10,6 @@ import (
 
 	"github.com/fuzxxl/nfc/2.0/nfc"
 )
-
-// NFCEvent contains an event at the NFC reader. Either UID or Err is nil.
-type NFCEvent struct {
-	UID []byte
-	Err error
-}
 
 // DefaultModulation gives defaults for the modulation type and Baudrate.
 // Currently, only nfc.ISO14443a is supported for the type. If the default
