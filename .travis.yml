@@ -1,0 +1,10 @@
+language: go
+
+go:
+    - tip
+
+install:
+    - go get -tags nonfc -insecure -v github.com/nnev/kasse
+
+script:
+    - go test -tags nonfc ./...
