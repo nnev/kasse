@@ -17,12 +17,13 @@ type HTTPReader struct {
 
 // RegisterHTTPReader returns a registered HTTPReader, that listens on
 // /reader and adds some basic handlers to simulate card-swipes.
-func RegisterHTTPReader() (*HTTPReader, error) {
-	r := mux.NewRouter()
-	r.Methods("GET").Path("/reader/").HandlerFunc(HTTPReader{}.Index)
-	r.Methods("POST", "GET").Path("/reader/swipe").HandlerFunc(HTTPReader{}.Swipe)
-	http.Handle("/reader/", r)
-	return &HTTPReader{}, nil
+func RegisterHTTPReader(k *Kasse) (*HTTPReader, error) {
+	r := &HTTPReader{k}
+	router := mux.NewRouter()
+	router.Methods("GET").Path("/reader/").HandlerFunc(r.Index)
+	router.Methods("POST", "GET").Path("/reader/swipe").HandlerFunc(r.Swipe)
+	http.Handle("/reader/", router)
+	return r, nil
 }
 
 var (

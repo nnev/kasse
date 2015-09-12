@@ -379,7 +379,7 @@ func (k *Kasse) GetTransactions(user User, n int) ([]Transaction, error) {
 func main() {
 	flag.Parse()
 
-	var k Kasse
+	k := new(Kasse)
 	k.log = log.New(os.Stderr, "", log.LstdFlags)
 
 	if db, err := sqlx.Connect(*driver, *connect); err != nil {
@@ -414,7 +414,7 @@ func main() {
 		}()
 	}
 
-	RegisterHTTPReader()
+	RegisterHTTPReader(k)
 	go func() {
 		log.Fatal(http.ListenAndServe(*listen, context.ClearHandler(http.DefaultServeMux)))
 	}()
