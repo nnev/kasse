@@ -33,6 +33,12 @@ func init() {
 	gob.Register(User{})
 }
 
+// NFCEvent contains an event at the NFC reader. Either UID or Err is nil.
+type NFCEvent struct {
+	UID []byte
+	Err error
+}
+
 // Kasse collects all state of the application in a central type, to make
 // parallel testing possible.
 type Kasse struct {
