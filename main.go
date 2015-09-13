@@ -422,6 +422,7 @@ func main() {
 
 	RegisterHTTPReader(k)
 	go func() {
+		log.Printf("Starting Webserver on http://%s/", *listen)
 		log.Fatal(http.ListenAndServe(*listen, context.ClearHandler(http.DefaultServeMux)))
 	}()
 
