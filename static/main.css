@@ -35,12 +35,17 @@
 	background: inherit;
 }
 
-.card-last-transactions {
+.card-last-transactions table {
+	width: 100%;
+}
+
+.mdl-cell {
 	min-width: 25em;
 }
 
-.card-last-transactions table {
-	width: 100%;
+.mdl-card {
+	max-width: 100%;
+	width: 400px;
 }
 
 .mdl-card__title {
