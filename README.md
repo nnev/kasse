@@ -2,7 +2,7 @@
 
 This is an Implementation of a payment system for the
 [Heidelberg Chaostreff](https://www.noname-ev.de). It is currently in a basic
-stage of devellopment, so this README.md should give you enough information to
+stage of development, so this README.md should only give you enough information to
 install it and start testing.
 
 ## Installing
@@ -14,6 +14,7 @@ the future. In Debian you need to install the following packages:
 - sqlite3
 - golang
 
+The following will build the code and give you a basic environment to run kasse:
 
 ```
 export GOROOT=$HOME/go
@@ -23,4 +24,8 @@ cd ~/go/src/github.com/nnev/kasse && sqlite3 kasse.sqlite < schema.sql
 ```
 
 ## Testing
-`kasse --hardware=false`
+
+It is important, that the binary runs in the path containing kasse.sqlite from
+above or gives the full path to it with -connect
+
+`kasse -hardware=false`
