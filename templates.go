@@ -34,6 +34,10 @@ func init() {
 		if filepath.Base(f) == "layout.html" {
 			continue
 		}
+		// Skip hidden files
+		if filepath.Base(f)[0] == '.' {
+			continue
+		}
 		content, err := ioutil.ReadFile(f)
 		if err != nil {
 			log.Fatalf("Could not read %q: %v", f, err)
