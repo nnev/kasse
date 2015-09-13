@@ -74,7 +74,7 @@
             {{ range .Transactions }}
 			<tr>
 				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .Card }}</td>
-				<td class="mdl-data-table__cell--non-numeric">{{ .Time.Format "2006-01-02 15:04" }}</td>
+				<td class="mdl-data-table__cell--non-numeric"><time>{{ .Time.Format "2006-01-02 15:04" }}</time></td>
 				<td class="mdl-data-table__cell--non-numeric">{{ toEuros .Amount }}€</td>
 			</tr>
             {{ end }}
