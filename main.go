@@ -422,13 +422,7 @@ func main() {
 
 	RegisterHTTPReader(k)
 	go func() {
-		url := "http://"
-		if strings.HasPrefix(*listen, ":") {
-			url += "localhost"
-		}
-		url += *listen + "/"
-
-		log.Println("Starting Webserver on ", url)
+		log.Printf("Starting Webserver on http://%s/", *listen)
 		log.Fatal(http.ListenAndServe(*listen, context.ClearHandler(http.DefaultServeMux)))
 	}()
 
