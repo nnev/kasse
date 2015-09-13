@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/nnev/kasse.svg?branch=master)](https://travis-ci.org/nnev/kasse)
+
 ## Kasse
 
 This is an Implementation of a payment system for the
