@@ -1,4 +1,4 @@
-Thank you for contributing. These are some general guideluines for your
+Thank you for contributing. These are some general guidelines for your
 contributions and communications in this repository:
 
 Issues
@@ -40,10 +40,9 @@ Please make sure, the following is true, when you submit your PR:
 Coding Style
 ===
 
-General coding style is idiomatic go. Readability has priority. Some
-guideluines that you might take into account when contributing code (though it
-is not necessary to know them all. Where applicable, they will be pointed out
-in code review):
+General coding style is idiomatic go. Readability has priority. You might take
+into account this list of resources. You don't need to know them all, though.
+They will be pointed out to you in the review process.
 * [Effective Go](https://golang.org/doc/effective_go.html)
 * [Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
 
