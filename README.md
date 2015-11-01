@@ -31,3 +31,9 @@ It is important, that the binary runs in the path containing kasse.sqlite from
 above or gives the full path to it with -connect
 
 `kasse -hardware=false`
+
+## Contributing
+
+Thank you for considering contributing to this repository. Please see our
+[contribution guidelines](CONTRIBUTING.md) for some advice on how to make your
+contribution as useful as possible.
