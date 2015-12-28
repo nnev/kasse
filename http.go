@@ -12,7 +12,7 @@ func (k *Kasse) GetLoginPage(res http.ResponseWriter, req *http.Request) {
 
 	if err := ExecuteTemplate(res, TemplateInput{Title: "Login", Body: "login.html"}); err != nil {
 		k.log.Println("Could not render template:", err)
-		http.Error(res, "Internal error", 500)
+		http.Error(res, "Internal error", http.StatusInternalServerError)
 		return
 	}
 }
