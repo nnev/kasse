@@ -70,7 +70,7 @@ func (k *Kasse) GetNewUserPage(res http.ResponseWriter, req *http.Request) {
 
 	if err := ExecuteTemplate(res, TemplateInput{Title: "Create new user", Body: "newUser.html"}); err != nil {
 		k.log.Println("Could not render template:", err)
-		http.Error(res, "Internal error", 500)
+		http.Error(res, "Internal error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -92,7 +92,7 @@ func (k *Kasse) PostNewUserPage(res http.ResponseWriter, req *http.Request) {
 
 	user, err := k.RegisterUser(username, password)
 	if err != nil && err != ErrUserExists {
-		k.log.Println("Something went wrong:", err)
+		k.log.Printf("Registering user %q failed:%v", username, password, err)
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
 		http.Error(res, "Internal server error", http.StatusInternalServerError)
@@ -100,7 +100,7 @@ func (k *Kasse) PostNewUserPage(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err == ErrUserExists {
-		k.log.Println("User already exists.", err)
+		k.log.Println(err)
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
 		http.Error(res, "User already exists.", http.StatusUnauthorized)
@@ -203,5 +203,6 @@ func (k *Kasse) Handler() http.Handler {
 	r.Methods("POST").Path("/login.html").HandlerFunc(k.PostLoginPage)
 	r.Methods("GET").Path("/logout.html").HandlerFunc(k.GetLogout)
 	r.Methods("GET").Path("/create_user.html").HandlerFunc(k.GetNewUserPage)
+	r.Methods("POST").Path("/create_user.html").HandlerFunc(k.PostNewUserPage)
 	return r
 }
