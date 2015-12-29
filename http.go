@@ -96,11 +96,12 @@ func (k *Kasse) PostNewUserPage(res http.ResponseWriter, req *http.Request) {
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
 		http.Error(res, "Password and confirmation don't match", http.StatusBadRequest)
+		return
 	}
 
 	user, err := k.RegisterUser(username, password)
 	if err != nil && err != ErrUserExists {
-		k.log.Printf("Registering user %q failed:%v", username, password, err)
+		k.log.Printf("Registering user %q failed:%v", username, err)
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
 		http.Error(res, "Internal server error", http.StatusInternalServerError)
@@ -111,7 +112,7 @@ func (k *Kasse) PostNewUserPage(res http.ResponseWriter, req *http.Request) {
 		k.log.Println(err)
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
-		http.Error(res, "User already exists.", http.StatusUnauthorized)
+		http.Error(res, "User already exists.", http.StatusForbidden)
 		return
 	}
 

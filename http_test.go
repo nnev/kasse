@@ -120,7 +120,7 @@ func TestLogin(t *testing.T) {
 
 func TestNewUser(t *testing.T) {
 	k := Kasse{db: createDB(t), log: testLogger(t)}
-	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
+	k.sessions = sessions.NewCookieStore([]byte("foobar"))
 	h := k.Handler()
 
 	jar, _ := cookiejar.New(nil)
