@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -82,12 +83,19 @@ func (k *Kasse) GetNewUserPage(res http.ResponseWriter, req *http.Request) {
 func (k *Kasse) PostNewUserPage(res http.ResponseWriter, req *http.Request) {
 	username := req.FormValue("username")
 	password := []byte(req.FormValue("password"))
+	confirm := []byte(req.FormValue("confirm"))
 
-	if username == "" || len(password) == 0 {
+	if username == "" || len(password) == 0 || len(confirm) == 0 {
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
 		http.Error(res, "Neither username nor password can be empty", http.StatusBadRequest)
 		return
+	}
+
+	if !bytes.Equal(password, confirm) {
+		// TODO: Write own Error function, that uses a template for better
+		// looking error pages. Also, redirect.
+		http.Error(res, "Password and confirmation don't match", http.StatusBadRequest)
 	}
 
 	user, err := k.RegisterUser(username, password)
