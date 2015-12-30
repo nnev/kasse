@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -46,6 +47,72 @@ func (k *Kasse) PostLoginPage(res http.ResponseWriter, req *http.Request) {
 		// TODO: Write own Error function, that uses a template for better
 		// looking error pages. Also, redirect.
 		http.Error(res, "Wrong username or password", http.StatusUnauthorized)
+		return
+	}
+
+	session, _ := k.sessions.Get(req, "nnev-kasse")
+	redirect := "/"
+	if v := session.Flashes(); len(v) > 0 {
+		if s, ok := v[0].(string); ok {
+			redirect = s
+		}
+	}
+	session.Values["user"] = user
+	if err := session.Save(req, res); err != nil {
+		k.log.Printf("Error saving session: %v", err)
+	}
+
+	http.Redirect(res, req, redirect, http.StatusFound)
+}
+
+// GetNewUserPage renders the page to create a new user.
+func (k *Kasse) GetNewUserPage(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "text/html")
+
+	if err := ExecuteTemplate(res, TemplateInput{Title: "Create new user", Body: "newUser.html"}); err != nil {
+		k.log.Println("Could not render template:", err)
+		http.Error(res, "Internal error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// PostNewUserPage receives a POST request with username and password and tries
+// to create a new user. It will redirect to the first Flashvalue in the
+// session on success, or to / if none is set and save the authenticated user
+// in the session.
+func (k *Kasse) PostNewUserPage(res http.ResponseWriter, req *http.Request) {
+	username := req.FormValue("username")
+	password := []byte(req.FormValue("password"))
+	confirm := []byte(req.FormValue("confirm"))
+
+	if username == "" || len(password) == 0 || len(confirm) == 0 {
+		// TODO: Write own Error function, that uses a template for better
+		// looking error pages. Also, redirect.
+		http.Error(res, "Neither username nor password can be empty", http.StatusBadRequest)
+		return
+	}
+
+	if !bytes.Equal(password, confirm) {
+		// TODO: Write own Error function, that uses a template for better
+		// looking error pages. Also, redirect.
+		http.Error(res, "Password and confirmation don't match", http.StatusBadRequest)
+		return
+	}
+
+	user, err := k.RegisterUser(username, password)
+	if err != nil && err != ErrUserExists {
+		k.log.Printf("Registering user %q failed:%v", username, err)
+		// TODO: Write own Error function, that uses a template for better
+		// looking error pages. Also, redirect.
+		http.Error(res, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if err == ErrUserExists {
+		k.log.Println(err)
+		// TODO: Write own Error function, that uses a template for better
+		// looking error pages. Also, redirect.
+		http.Error(res, "User already exists.", http.StatusForbidden)
 		return
 	}
 
@@ -144,5 +211,7 @@ func (k *Kasse) Handler() http.Handler {
 	r.Methods("GET").Path("/login.html").HandlerFunc(k.GetLoginPage)
 	r.Methods("POST").Path("/login.html").HandlerFunc(k.PostLoginPage)
 	r.Methods("GET").Path("/logout.html").HandlerFunc(k.GetLogout)
+	r.Methods("GET").Path("/create_user.html").HandlerFunc(k.GetNewUserPage)
+	r.Methods("POST").Path("/create_user.html").HandlerFunc(k.PostNewUserPage)
 	return r
 }
