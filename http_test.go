@@ -145,7 +145,7 @@ func TestNewUser(t *testing.T) {
 		// test for working creation
 		{"POST", "http://localhost:9000/create_user.html", url.Values{"username": []string{"foo"}, "password": []string{"bar"}, "confirm": []string{"bar"}}, http.StatusFound, map[string]string{"Location": "/"}, ""},
 		// after creation, the user should already exist
-		{"POST", "http://localhost:9000/create_user.html", url.Values{"username": []string{"foo"}, "password": []string{"bar"}, "confirm": []string{"bar"}}, http.StatusUnauthorized, nil, "User already exists"},
+		{"POST", "http://localhost:9000/create_user.html", url.Values{"username": []string{"foo"}, "password": []string{"bar"}, "confirm": []string{"bar"}}, http.StatusForbidden, nil, "User already exists"},
 		// now trying to create user with empty name
 		{"POST", "http://localhost:9000/create_user.html", url.Values{"username": []string{""}, "password": []string{"bar"}, "confirm": []string{"bar"}}, http.StatusBadRequest, nil, "Neither username nor password can be empty"},
 		// now trying to create user with empty password
