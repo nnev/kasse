@@ -12,7 +12,7 @@ install it and start testing.
 Currently you need to install libnfc to build kasse. This will not be needed in
 the future. In Debian you need to install the following packages:
 
-- libnfc-dev
+- libnfc-dev (not required for testing)
 - sqlite3
 - golang
 
@@ -21,7 +21,10 @@ The following will build the code and give you a basic environment to run kasse:
 ```
 export GOROOT=$HOME/go
 export PATH=$PATH:$GOROOT/bin
-go get -insecure -u github.com/nnev/kasse`
+# If you don't want/need support for the NFC Reader (e.g. for testing), run
+go get -u github.com/nnev/kasse
+# otherwise run instead:
+go get -tags nonfc -u github.com/nnev/kasse
 cd ~/go/src/github.com/nnev/kasse && sqlite3 kasse.sqlite < schema.sql
 ```
 
