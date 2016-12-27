@@ -16,6 +16,11 @@
 			<div class="mdl-layout__header-row">
 			  <!-- Title -->
 			  <span class="mdl-layout-title">{{ .Title }}</span>
+			  <!-- Add a spacer to align logout to the right -->
+			  <div class="mdl-layout-spacer"></div>
+			  {{if ne .Title "Login"}}
+			  <a class="mdl-navigation__link" href="/logout.html">Logout</a>
+			  {{end}}
 			</div>
 		  </header>
 		  <main class="mdl-layout__content">
