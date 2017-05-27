@@ -45,6 +45,8 @@ type Kasse struct {
 	db       *sqlx.DB
 	log      *log.Logger
 	sessions sessions.Store
+	user     *User
+	cards    (chan []byte)
 }
 
 // User represents a user in the system (as in the database schema).
@@ -87,6 +89,9 @@ const (
 	// AccountEmpty means the charge was not applied, because there are not
 	// enough funds left in the account.
 	AccountEmpty
+	// UnknownCard means that either the swipe will be ignored or a new Card
+	// is getting registered
+	UnknownCard
 )
 
 // Result is the action taken by a swipe of a card. It contains all information
@@ -187,7 +192,13 @@ func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	var user User
 	if err := tx.Get(&user, `SELECT users.user_id, name, password FROM cards LEFT JOIN users ON cards.user_id = users.user_id WHERE card_id = $1`, uid); err != nil {
 		k.log.Println("Card not found in database")
-		return nil, ErrCardNotFound
+
+		return &Result{
+			Code:    UnknownCard,
+			UID:     uid,
+			User:    "",
+			Account: 0,
+		}, ErrCardNotFound
 	}
 	k.log.Printf("Card belongs to %v", user.Name)
 
@@ -314,6 +325,10 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 
 	card.ID = uid
 	card.User = owner.ID
+
+	//we have to reset the current user, so that others may register Cards.
+	k.user = nil
+
 	return &card, nil
 }
 
@@ -399,6 +414,9 @@ func main() {
 		}
 	}()
 
+	// the cards channel is used to communicate unknown cards to the
+	// PostAddCard-Handler.
+	k.cards = make(chan []byte)
 	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
 	http.Handle("/", handlers.LoggingHandler(os.Stderr, k.Handler()))
 
@@ -411,6 +429,7 @@ func main() {
 	}
 
 	events := make(chan NFCEvent)
+
 	// We have to wrap the call in a func(), because the go statement evaluates
 	// it's arguments in the current goroutine, and the argument to log.Fatal
 	// blocks in these cases.
@@ -433,7 +452,22 @@ func main() {
 			continue
 		}
 
+		if k.user != nil {
+			_, err := k.AddCard(ev.UID, k.user)
+			if err != nil {
+				flashLCD(lcd, err.Error(), 255, 0, 0)
+			} else {
+				flashLCD(lcd, "added card for user"+k.user.Name, 0, 255, 0)
+			}
+		}
+
 		res, err := k.HandleCard(ev.UID)
+		if err == ErrCardNotFound {
+			k.cards <- res.UID
+			//if the value isn't read within a few seconds, we discard it
+			//and inform the user of it.
+			//TODO
+		}
 		if res != nil {
 			res.Print(lcd)
 		} else {
