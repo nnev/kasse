@@ -203,6 +203,48 @@ func (k *Kasse) GetLogout(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// GetAddCard redirects to a new form helping the user to add a card.
+func (k *Kasse) GetAddCard(res http.ResponseWriter, req *http.Request) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	user := ui.(User)
+	data := struct {
+		User *User
+		UID  []byte
+	}{
+		User: &user,
+		UID:  []byte{},
+	}
+
+	k.user = &user
+
+	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "add_card.html", Data: data}); err != nil {
+		k.log.Println("Could not render template:", err)
+		http.Error(res, "Internal error", 500)
+		return
+	}
+
+	data.UID = <-k.cards
+
+	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "add_card.html", Data: data}); err != nil {
+		k.log.Println("Could not render template:", err)
+		http.Error(res, "Internal error", 500)
+		return
+	}
+}
+
+func (k *Kasse) PostAddCard(res http.ResponseWriter, req *http.Request) {
+
+}
+
 // Handler returns a http.Handler for the webinterface.
 func (k *Kasse) Handler() http.Handler {
 	r := mux.NewRouter()
@@ -213,5 +255,7 @@ func (k *Kasse) Handler() http.Handler {
 	r.Methods("GET").Path("/logout.html").HandlerFunc(k.GetLogout)
 	r.Methods("GET").Path("/create_user.html").HandlerFunc(k.GetNewUserPage)
 	r.Methods("POST").Path("/create_user.html").HandlerFunc(k.PostNewUserPage)
+	r.Methods("GET").Path("/add_card.html").HandlerFunc(k.GetAddCard)
+	r.Methods("POST").Path("/add_card.html").HandlerFunc(k.PostAddCard)
 	return r
 }
