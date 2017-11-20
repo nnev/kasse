@@ -462,11 +462,16 @@ func main() {
 		}
 
 		res, err := k.HandleCard(ev.UID)
+		fmt.Println(res, err)
 		if err == ErrCardNotFound {
-			k.cards <- res.UID
-			//if the value isn't read within a few seconds, we discard it
-			//and inform the user of it.
-			//TODO
+			timeout := time.After(3 * time.Second)
+			select {
+			case k.cards <- res.UID:
+				fmt.Println("wrote to k.cards")
+			case <-timeout:
+				continue
+				//TODO: log to user
+			}
 		}
 		if res != nil {
 			res.Print(lcd)
