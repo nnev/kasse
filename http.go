@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -231,13 +233,19 @@ func (k *Kasse) GetAddCard(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Internal error", 500)
 		return
 	}
+}
 
-	data.UID = <-k.cards
+func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "text/event-stream")
 
-	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "add_card.html", Data: data}); err != nil {
-		k.log.Println("Could not render template:", err)
-		http.Error(res, "Internal error", 500)
-		return
+	uid := <-k.cards
+
+	if _, err := fmt.Fprintf(res, "data: %x\n\n", string(uid)); err != nil {
+		log.Println("Could not write: %v", err)
+	}
+
+	if f, ok := res.(http.Flusher); ok {
+		f.Flush()
 	}
 }
 
@@ -257,5 +265,6 @@ func (k *Kasse) Handler() http.Handler {
 	r.Methods("POST").Path("/create_user.html").HandlerFunc(k.PostNewUserPage)
 	r.Methods("GET").Path("/add_card.html").HandlerFunc(k.GetAddCard)
 	r.Methods("POST").Path("/add_card.html").HandlerFunc(k.PostAddCard)
+	r.Methods("GET").Path("/add_card_event").HandlerFunc(k.AddCardEvent)
 	return r
 }
