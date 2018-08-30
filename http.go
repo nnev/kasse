@@ -4,10 +4,43 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 )
+
+func (k *Kasse) RenderAddMoney(res http.ResponseWriter, req *http.Request, message string) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	user := ui.(User)
+	data := struct {
+		User    *User
+		UID     []byte
+		Message string
+	}{
+		User:    &user,
+		UID:     []byte{},
+		Message: message,
+	}
+
+	k.user = &user
+
+	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "add_money.html", Data: data}); err != nil {
+		k.log.Println("Could not render template:", err)
+		http.Error(res, "Internal error", 500)
+		return
+	}
+}
 
 // GetLoginPage renders the login page to the user.
 func (k *Kasse) GetLoginPage(res http.ResponseWriter, req *http.Request) {
@@ -253,6 +286,54 @@ func (k *Kasse) PostAddCard(res http.ResponseWriter, req *http.Request) {
 
 }
 
+func (k *Kasse) GetAddMoney(res http.ResponseWriter, req *http.Request) {
+	k.RenderAddMoney(res, req, "")
+}
+
+func (k *Kasse) PostAddMoney(res http.ResponseWriter, req *http.Request) {
+	amount, err := strconv.ParseFloat(req.FormValue("amount"), 32)
+	if err != nil {
+		k.RenderAddMoney(res, req, "Amount must be a number")
+	}
+
+	if amount <= 0 || amount > 100 {
+		k.RenderAddMoney(res, req, "Amount must be € in range [0:0.1:100]")
+		return
+	}
+
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	user := ui.(User)
+	k.AddBalance(user, int32(math.Round(amount*100)))
+
+	http.Redirect(res, req, "/", 302)
+}
+
+func (k *Kasse) PayOneMoney(res http.ResponseWriter, req *http.Request) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	user := ui.(User)
+	k.PayOne(user)
+
+	http.Redirect(res, req, "/", 302)
+}
+
 // Handler returns a http.Handler for the webinterface.
 func (k *Kasse) Handler() http.Handler {
 	r := mux.NewRouter()
@@ -266,5 +347,8 @@ func (k *Kasse) Handler() http.Handler {
 	r.Methods("GET").Path("/add_card.html").HandlerFunc(k.GetAddCard)
 	r.Methods("POST").Path("/add_card.html").HandlerFunc(k.PostAddCard)
 	r.Methods("GET").Path("/add_card_event").HandlerFunc(k.AddCardEvent)
+	r.Methods("GET").Path("/add_money.html").HandlerFunc(k.GetAddMoney)
+	r.Methods("POST").Path("/add_money.html").HandlerFunc(k.PostAddMoney)
+	r.Methods("POST").Path("/pay_one_money.html").HandlerFunc(k.PayOneMoney)
 	return r
 }

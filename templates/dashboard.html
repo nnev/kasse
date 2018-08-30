@@ -1,96 +1,105 @@
 <div class="demo-grid-1 mdl-grid">
-  <!-- Account data -->
-  <div class="mdl-cell mdl-cell--4-col card-account-data">
-	<div class="mdl-card mdl-shadow--2dp">
-	  <div class="mdl-card__title">
-		<h2 class="mdl-card__title-text">{{ .User.Name }}</h2>
-	  </div>
-	  <div class="mdl-card__media card-account-data--balance">
-        <div>{{ .Balance }}€</div>
-	  </div>
-	  <div class="mdl-card__actions mdl-card--border">
-        <button class="mdl-button mdl-button--accent mdl-jso-button mdl-js-ripple-effect">
-          Aufladen
-        </button>
-	  </div>
-	</div>
-  </div>
+    <!-- Account data -->
+    <div class="mdl-cell mdl-cell--4-col card-account-data">
+        <div class="mdl-card mdl-shadow--2dp">
+            <div class="mdl-card__title">
+                <h2 class="mdl-card__title-text">{{ .User.Name }}</h2>
+            </div>
+            <div class="mdl-card__media card-account-data--balance">
+                <div>{{ .Balance }}€</div>
+            </div>
+            <div class="mdl-card__actions mdl-card--border">
+                <a href="/add_money.html" class="mdl-button mdl-button--accent mdl-js-button mdl-js-ripple-effect">
+                    Aufladen
+                </a>
+            </div>
+            <div class="mdl-card__actions mdl-card--border">
+                <form method="POST" action="/pay_one_money.html">
+                    <button class="mdl-button mdl-button--accent mdl-js-button mdl-js-ripple-effect">
+                        Einmal zählen
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 
-  <!-- Registered tags -->
-  <div class="mdl-cell mdl-cell--4-col">
-	<div class="mdl-card mdl-shadow--2dp card-registered-tags">
-	  <div class="mdl-card__title">
-		<h2 class="mdl-card__title-text">Registrierte Karten</h2>
-	  </div>
+    <!-- Registered tags -->
+    <div class="mdl-cell mdl-cell--4-col">
+        <div class="mdl-card mdl-shadow--2dp card-registered-tags">
+            <div class="mdl-card__title">
+                <h2 class="mdl-card__title-text">Registrierte Karten</h2>
+            </div>
 
-	  <div class="mdl-card__media">
-		{{ if .Cards }}
-		<table class="mdl-data-table mdl-js-data-table">
-		  <thead>
-			<tr>
-				<th class="mdl-data-table__cell--non-numeric">UID</th>
-				<th class="mdl-data-table__cell--non-numeric">Bezeichnung</th>
-			</tr>
-		  </thead>
-		  <tbody>
-            {{ range .Cards }}
-			<tr>
-				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .ID }}</td>
-				<td class="mdl-data-table__cell--non-numeric">{{ .Description }}</td>
-			</tr>
+            <div class="mdl-card__media">
+            {{ if .Cards }}
+                <table class="mdl-data-table mdl-js-data-table">
+                    <thead>
+                    <tr>
+                        <th class="mdl-data-table__cell--non-numeric">UID</th>
+                        <th class="mdl-data-table__cell--non-numeric">Bezeichnung</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ range .Cards }}
+                    <tr>
+                        <td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .ID }}</td>
+                        <td class="mdl-data-table__cell--non-numeric">{{ .Description }}</td>
+                    </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            {{ else }}
+                <div class="no-registered-tags">Keine</div>
             {{ end }}
-		  </tbody>
-		</table>
-		{{ else }}
-		<div class="no-registered-tags">Keine</div>
-		{{ end }}
-	  </div>
-	  <div class="mdl-card__menu">
-      <a href="/add_card.html">
-        <button class="mdl-button mdl-button--fab mdl-button--mini-fab mdl-button--colored mdl-js-button mdl-js-ripple-effect">
-          <i class="material-icons">add</i>
-        </button>
-      </a>
-	  </div>
-	</div>
-  </div>
+            </div>
+            <div class="mdl-card__menu">
+                <a href="/add_card.html">
+                    <button class="mdl-button mdl-button--fab mdl-button--mini-fab mdl-button--colored mdl-js-button mdl-js-ripple-effect">
+                        <i class="material-icons">add</i>
+                    </button>
+                </a>
+            </div>
+        </div>
+    </div>
 
-  <!-- Last transactions -->
-  <div class="mdl-cell mdl-cell--4-col">
-	<div class="mdl-card mdl-shadow--2dp card-last-transactions">
-	  <div class="mdl-card__title">
-		<h2 class="mdl-card__title-text">Letzte Transaktionen</h2>
-	  </div>
+    <!-- Last transactions -->
+    <div class="mdl-cell mdl-cell--4-col">
+        <div class="mdl-card mdl-shadow--2dp card-last-transactions">
+            <div class="mdl-card__title">
+                <h2 class="mdl-card__title-text">Letzte Transaktionen</h2>
+            </div>
 
-	  <div class="mdl-card__media">
-		{{ if .Transactions }}
-		<table class="mdl-data-table mdl-js-data-table">
-		  <thead>
-			<tr>
-				<th class="mdl-data-table__cell--non-numeric">Karte</th>
-				<th class="mdl-data-table__cell--non-numeric">Zeit</th>
-				<th>Betrag</th>
-			</tr>
-		  </thead>
-		  <tbody>
-            {{ range .Transactions }}
-			<tr>
-				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .Card }}</td>
-				<td class="mdl-data-table__cell--non-numeric"><time>{{ .Time.Format "2006-01-02 15:04" }}</time></td>
-				<td class="mdl-data-table__cell--non-numeric">{{ toEuros .Amount }}€</td>
-			</tr>
+            <div class="mdl-card__media">
+            {{ if .Transactions }}
+                <table class="mdl-data-table mdl-js-data-table">
+                    <thead>
+                    <tr>
+                        <th class="mdl-data-table__cell--non-numeric">Karte</th>
+                        <th class="mdl-data-table__cell--non-numeric">Zeit</th>
+                        <th>Betrag</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ range .Transactions }}
+                    <tr>
+                        <td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .Card }}</td>
+                        <td class="mdl-data-table__cell--non-numeric">
+                            <time>{{ .Time.Format "2006-01-02 15:04" }}</time>
+                        </td>
+                        <td class="mdl-data-table__cell--non-numeric">{{ toEuros .Amount }}€</td>
+                    </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            {{ else }}
+                <div class="no-transactions">Keine</div>
             {{ end }}
-		  </tbody>
-		</table>
-		{{ else }}
-		<div class="no-transactions">Keine</div>
-		{{ end }}
-	  </div>
-	  <div class="mdl-card__actions mdl-card--border">
-        <button class="mdl-button mdl-button--accent mdl-jso-button mdl-js-ripple-effect">
-          Mehr
-        </button>
-	  </div>
-	</div>
-  </div>
+            </div>
+            <div class="mdl-card__actions mdl-card--border">
+                <button class="mdl-button mdl-button--accent mdl-jso-button mdl-js-ripple-effect">
+                    Mehr
+                </button>
+            </div>
+        </div>
+    </div>
 </div>

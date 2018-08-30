@@ -381,6 +381,44 @@ func (k *Kasse) GetBalance(user User) (int64, error) {
 	return b.Int64, nil
 }
 
+// AddBalance increases the current balance for a given user.
+func (k *Kasse) AddBalance(user User, amount int32) error {
+	tx, err := k.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Insert new transaction
+	if _, err := tx.Exec(`INSERT INTO transactions (user_id, card_id, time, amount, kind) VALUES ($1, $2, $3, $4, $5)`, user.ID, -1, time.Now(), amount, "Aufladung"); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// PayOne increases the current balance for a given user.
+func (k *Kasse) PayOne(user User) error {
+	tx, err := k.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Insert new transaction
+	if _, err := tx.Exec(`INSERT INTO transactions (user_id, card_id, time, amount, kind) VALUES ($1, $2, $3, $4, $5)`, user.ID, -1, time.Now(), -100, "Zahlung Webseite"); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetTransactions gets the last n transactions for a given user. If n ≤ 0, all
 // transactions are returnsed.
 func (k *Kasse) GetTransactions(user User, n int) ([]Transaction, error) {
