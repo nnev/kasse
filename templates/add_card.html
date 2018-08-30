@@ -6,35 +6,37 @@
 </style>
 
 <div class="mdl-grid">
-  <div class="mdl-layout-spacer"></div>
   <div class="mdl-cell mdl-cell--4-col mdl-cell--4-offset">
     <div class="mdl-card mdl-shadow--2dp" id="add-card-box">
       <div class="mdl-card__title">
         <h2 class="mdl-card__title-text">Adding Card for {{ .User.Name }}</h2>
       </div>
       <div class="mdl-card__supporting-text">
-        Bitte gib eine Beschreibung für eine Karte ein und geh deine Karte
-        swipen.
+        Bitte gib eine Beschreibung für
+        deine Karte ein und geh deine Karte swipen.
       </div>
-      <form method="POST">
-        <div class="mdl-textfield mdl-js-textfield">
-          <input class="mdl-textfield__input" type="text" name="description" />
-          <label class="mdl-textfield__label" for="description">Beschreibung</label>
-        </div>
-        <div class="mdl-textfield mdl-js-textfield">
-          <input class="mdl-textfield__input" type="text" name="uid" />
-          <label class="mdl-textfield__label" for="uid">Card-UID</label>
-        </div>
-        <div class="mdl-card__actions mdl-card--border">
-          <button class="mdl-button mdl-button--accent mdl-jso-button
-          mdl-js-ripple-effect" type="submit">
-            Karte geswiped
-          </button>
-        </div>
-      </form>
+      <div class="mdl-card__supporting-text">
+        <form method="POST">
+          <div class="mdl-textfield mdl-js-textfield">
+            <input class="mdl-textfield__input" type="text" name="description" />
+            <label class="mdl-textfield__label" for="description">Beschreibung</label>
+          </div>
+          <div class="mdl-textfield mdl-js-textfield">
+            <input class="mdl-textfield__input" type="text" name="uid" />
+            <label class="mdl-textfield__label" for="uid">Card-UID</label>
+          </div>
+          <div class="mdl-card__actions">
+            <div class="mdl-layout-spacer"></div>
+            <button class="mdl-button mdl-button--colored mdl-js-button
+            mdl-js-ripple-effect" type="submit">
+              Karte geswiped
+            </button>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-  <div class="mdl-layout-spacer"></div>
 </div>
 
 <script type="text/javascript">
