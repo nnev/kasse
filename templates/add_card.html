@@ -9,7 +9,7 @@
   <div class="mdl-cell mdl-cell--4-col mdl-cell--4-offset">
     <div class="mdl-card mdl-shadow--2dp" id="add-card-box">
       <div class="mdl-card__title">
-        <h2 class="mdl-card__title-text">Adding Card for {{ .User.Name }}</h2>
+        <h2 class="mdl-card__title-text">Adding Card for {{ .Name }}</h2>
       </div>
       <div class="mdl-card__supporting-text">
         Bitte gib eine Beschreibung für
@@ -18,12 +18,12 @@
       <div class="mdl-card__supporting-text">
         <form method="POST">
           <div class="mdl-textfield mdl-js-textfield">
-            <input class="mdl-textfield__input" type="text" name="description" />
+            <input class="mdl-textfield__input" type="text" name="description" tabindex="1"/>
             <label class="mdl-textfield__label" for="description">Beschreibung</label>
           </div>
           <div class="mdl-textfield mdl-js-textfield">
-            <input class="mdl-textfield__input" type="text" name="uid" />
-            <label class="mdl-textfield__label" for="uid">Card-UID</label>
+            <input class="mdl-textfield__input" type="text" name="uid" readonly/>
+            <label class="mdl-textfield__label" for="uid">Swipe Card</label>
           </div>
           <div class="mdl-card__actions">
             <div class="mdl-layout-spacer"></div>
@@ -31,7 +31,6 @@
             mdl-js-ripple-effect" type="submit">
               Karte geswiped
             </button>
-            </div>
           </div>
         </form>
       </div>
@@ -41,18 +40,20 @@
 
 <script type="text/javascript">
 var evtSource = new EventSource('/add_card_event');
-var eventTarget = document.querySelector('div[name=uid]');
+var eventTarget = document.querySelector('input[name=uid]');
+document.querySelector('input[name="description"]').focus();
 
 evtSource.onmessage = function(e) {
-  console.log("event")
-  eventTarget.innerHTML = e.data
-  evtSource.Close()
-}
+  console.log("event");
+  eventTarget.value = e.data;
+  eventTarget.closest('div .mdl-textfield').className += " is-dirty";
+  evtSource.close()
+};
 
 evtSource.onopen = function(e) {
   console.log("open")
-}
+};
 evtSource.onerror = function(e) {
   console.log("error:", e)
-}
+};
 </script>
