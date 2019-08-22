@@ -305,8 +305,8 @@ func (k *Kasse) RegisterUser(name string, password []byte) (*User, error) {
 // AddCard adds a card to the database with a given owner and returns a
 // populated card struct. It returns ErrCardExists if a card with the given UID
 // already exists.
-func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
-	k.log.Printf("Adding card %x for owner %s", uid, owner.Name)
+func (k *Kasse) AddCard(uid []byte, owner *User, description string) (*Card, error) {
+	k.log.Printf("Adding card %x for owner %s and description %s", uid, owner.Name, description)
 
 	tx, err := k.db.Beginx()
 	if err != nil {
@@ -324,7 +324,7 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 		return nil, err
 	}
 
-	if _, err := tx.Exec(`INSERT INTO cards (card_id, user_id, description) VALUES ($1, $2, '')`, uid, owner.ID); err != nil {
+	if _, err := tx.Exec(`INSERT INTO cards (card_id, user_id, description) VALUES ($1, $2, $3)`, uid, owner.ID, description); err != nil {
 		return nil, err
 	}
 
