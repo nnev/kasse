@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"github.com/gorilla/mux"
 	"log"
@@ -227,6 +228,17 @@ func (k *Kasse) GetAddCard(res http.ResponseWriter, req *http.Request) {
 
 // Returns a json containing the next swiped card UID. The UID is obtained using a channel which is written by the HandleCard method
 func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	_, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+
 	res.Header().Set("Content-Type", "text/event-stream")
 	log.Println("Waiting for Card")
 
@@ -245,7 +257,37 @@ func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
 
 // Creates a new Card for the POSTing user
 func (k *Kasse) PostAddCard(res http.ResponseWriter, req *http.Request) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
 
+	user := ui.(User)
+
+	err = req.ParseForm()
+	if err != nil {
+		// TODO: handle error
+	}
+	description := req.Form.Get("description")
+	uidString := req.Form.Get("uid")
+
+	uid, err := hex.DecodeString(uidString)
+	if err != nil {
+
+	}
+
+	_, err = k.AddCard(uid, &user, description)
+	if err != nil {
+		// TODO: handle error
+	}
+
+	http.Redirect(res, req, "/", 302)
 }
 
 // Handler returns a http.Handler for the webinterface.
