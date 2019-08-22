@@ -3,10 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-
-	"github.com/gorilla/mux"
 )
 
 // GetLoginPage renders the login page to the user.
@@ -205,7 +204,7 @@ func (k *Kasse) GetLogout(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// GetAddCard redirects to a new form helping the user to add a card.
+// GetAddCard renders the add card dialog. The rendered template contains an instruction for the browser to connect to AddCardEvent and listen for the card UID on the next swipe
 func (k *Kasse) GetAddCard(res http.ResponseWriter, req *http.Request) {
 	session, err := k.sessions.Get(req, "nnev-kasse")
 	if err != nil {
@@ -217,31 +216,26 @@ func (k *Kasse) GetAddCard(res http.ResponseWriter, req *http.Request) {
 		http.Redirect(res, req, "/login.html", 302)
 		return
 	}
+
 	user := ui.(User)
-	data := struct {
-		User *User
-		UID  []byte
-	}{
-		User: &user,
-		UID:  []byte{},
-	}
-
-	k.user = &user
-
-	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "add_card.html", Data: data}); err != nil {
+	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "add_card.html", Data: &user}); err != nil {
 		k.log.Println("Could not render template:", err)
 		http.Error(res, "Internal error", 500)
 		return
 	}
 }
 
+// Returns a json containing the next swiped card UID. The UID is obtained using a channel which is written by the HandleCard method
 func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/event-stream")
+	log.Println("Waiting for Card")
 
-	uid := <-k.cards
+	uid := <-k.card
+	uidString := fmt.Sprintf("%x", uid)
+	log.Println("Card UID obtained! Card uid is", uidString)
 
-	if _, err := fmt.Fprintf(res, "data: %x\n\n", string(uid)); err != nil {
-		log.Println("Could not write: %v", err)
+	if _, err := fmt.Fprintf(res, "data: %s\n\n", uidString); err != nil {
+		log.Println("Could not write: ", err)
 	}
 
 	if f, ok := res.(http.Flusher); ok {
@@ -249,6 +243,7 @@ func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// Creates a new Card for the POSTing user
 func (k *Kasse) PostAddCard(res http.ResponseWriter, req *http.Request) {
 
 }

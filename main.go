@@ -45,8 +45,7 @@ type Kasse struct {
 	db       *sqlx.DB
 	log      *log.Logger
 	sessions sessions.Store
-	user     *User
-	cards    (chan []byte)
+	card     (chan []byte)
 }
 
 // User represents a user in the system (as in the database schema).
@@ -89,8 +88,7 @@ const (
 	// AccountEmpty means the charge was not applied, because there are not
 	// enough funds left in the account.
 	AccountEmpty
-	// UnknownCard means that either the swipe will be ignored or a new Card
-	// is getting registered
+	// UnknownCard means that the swipe will be ignored
 	UnknownCard
 )
 
@@ -181,6 +179,19 @@ var ErrWrongAuth = errors.New("wrong username or password")
 // returned error is nil.
 func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	k.log.Printf("Card %x was swiped", uid)
+
+	// if some routine is reading from the card channel, return nil and no error, since all functionality should be handled by the listening routine.
+	select {
+	case k.card <- uid:
+		return &Result{
+			Code:    UnknownCard,
+			UID:     uid,
+			User:    "",
+			Account: 0,
+		}, nil
+	default:
+		// do nothing and simply continue with execution
+	}
 
 	tx, err := k.db.Beginx()
 	if err != nil {
@@ -326,9 +337,6 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 	card.ID = uid
 	card.User = owner.ID
 
-	//we have to reset the current user, so that others may register Cards.
-	k.user = nil
-
 	return &card, nil
 }
 
@@ -414,9 +422,7 @@ func main() {
 		}
 	}()
 
-	// the cards channel is used to communicate unknown cards to the
-	// PostAddCard-Handler.
-	k.cards = make(chan []byte)
+	k.card = make(chan []byte)
 	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
 	http.Handle("/", handlers.LoggingHandler(os.Stderr, k.Handler()))
 
@@ -452,27 +458,7 @@ func main() {
 			continue
 		}
 
-		if k.user != nil {
-			_, err := k.AddCard(ev.UID, k.user)
-			if err != nil {
-				flashLCD(lcd, err.Error(), 255, 0, 0)
-			} else {
-				flashLCD(lcd, "added card for user"+k.user.Name, 0, 255, 0)
-			}
-		}
-
 		res, err := k.HandleCard(ev.UID)
-		fmt.Println(res, err)
-		if err == ErrCardNotFound {
-			timeout := time.After(3 * time.Second)
-			select {
-			case k.cards <- res.UID:
-				fmt.Println("wrote to k.cards")
-			case <-timeout:
-				continue
-				//TODO: log to user
-			}
-		}
 		if res != nil {
 			res.Print(lcd)
 		} else {
