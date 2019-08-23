@@ -219,7 +219,17 @@ func (k *Kasse) GetAddCard(res http.ResponseWriter, req *http.Request) {
 	}
 
 	user := ui.(User)
-	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "add_card.html", Data: &user}); err != nil {
+	data := struct {
+		User        *User
+		Description string
+		Message     string
+	}{
+		User:        &user,
+		Description: "",
+		Message:     "",
+	}
+
+	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "add_card.html", Data: &data}); err != nil {
 		k.log.Println("Could not render template:", err)
 		http.Error(res, "Internal error", 500)
 		return
@@ -272,19 +282,48 @@ func (k *Kasse) PostAddCard(res http.ResponseWriter, req *http.Request) {
 
 	err = req.ParseForm()
 	if err != nil {
-		// TODO: handle error
+		http.Error(res, "Internal error", http.StatusBadRequest)
 	}
 	description := req.Form.Get("description")
 	uidString := req.Form.Get("uid")
 
+	renderError := func(message string) {
+		data := struct {
+			User        *User
+			Description string
+			Message     string
+		}{
+			User:        &user,
+			Description: description,
+			Message:     message,
+		}
+
+		if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "add_card.html", Data: &data}); err != nil {
+			k.log.Println("Could not render template:", err)
+			http.Error(res, "Internal error", 500)
+			return
+		}
+	}
+
+	if len(uidString) == 0 {
+		renderError("Please swipe Card to register")
+		return
+	}
+
 	uid, err := hex.DecodeString(uidString)
 	if err != nil {
-
+		renderError("Hexadecimal UID could not be decoded")
+		return
 	}
 
 	_, err = k.AddCard(uid, &user, description)
 	if err != nil {
-		// TODO: handle error
+		if err == ErrCardExists {
+			renderError("Card is already registered")
+		} else {
+			renderError("Card could not be added")
+		}
+		return
 	}
 
 	http.Redirect(res, req, "/", 302)
