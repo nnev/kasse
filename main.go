@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Merovius/go-misc/lcd2usb"
@@ -42,10 +43,11 @@ type NFCEvent struct {
 // Kasse collects all state of the application in a central type, to make
 // parallel testing possible.
 type Kasse struct {
-	db       *sqlx.DB
-	log      *log.Logger
-	sessions sessions.Store
-	card     (chan []byte)
+	db           *sqlx.DB
+	log          *log.Logger
+	sessions     sessions.Store
+	card         (chan []byte)
+	registration sync.Mutex
 }
 
 // User represents a user in the system (as in the database schema).
@@ -423,6 +425,7 @@ func main() {
 	}()
 
 	k.card = make(chan []byte)
+	k.registration = sync.Mutex{}
 	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
 	http.Handle("/", handlers.LoggingHandler(os.Stderr, k.Handler()))
 
