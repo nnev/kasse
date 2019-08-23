@@ -17,6 +17,9 @@
         <br/>
         <font color="red">{{ .Message }}</font>
       </div>
+      <div class="registration-lock mdl-card__supporting-text">
+        <font color="red">Waiting for other users to finish registration…</font>
+      </div>
       <div class="mdl-card__supporting-text">
         <form method="POST">
           <div class="mdl-textfield mdl-js-textfield">
@@ -45,12 +48,17 @@ var evtSource = new EventSource('/add_card_event');
 var eventTarget = document.querySelector('input[name=uid]');
 document.querySelector('input[name="description"]').focus();
 
-evtSource.onmessage = function(e) {
-  console.log("event");
+evtSource.addEventListener('lock', function(e) {
+  console.log("lock obtained");
+  document.querySelector('div .registration-lock').style.display = "none";
+});
+
+evtSource.addEventListener('card', function(e) {
+  console.log("card event");
   eventTarget.value = e.data;
   eventTarget.closest('div .mdl-textfield').className += " is-dirty";
   evtSource.close()
-};
+});
 
 evtSource.onopen = function(e) {
   console.log("open")
