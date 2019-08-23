@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"time"
 )
 
 // GetLoginPage renders the login page to the user.
@@ -252,7 +254,21 @@ func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/event-stream")
 	log.Println("Waiting for Card")
 
-	uid := <-k.card
+	// Only one go routine can listen on the next card swipe
+	k.registration.Lock()
+	defer k.registration.Unlock()
+
+	// Read from the channel for one minute. If the timeout is exceeded and the registration window is still open on the client, the browser reconnects anyway
+	var uid []byte
+	ctx, cancel := context.WithTimeout(req.Context(), 1*time.Minute)
+	defer cancel()
+	select {
+	case uid = <-k.card:
+	case <-ctx.Done():
+		http.Error(res, ctx.Err().Error(), http.StatusRequestTimeout)
+		return
+	}
+
 	uidString := fmt.Sprintf("%x", uid)
 	log.Println("Card UID obtained! Card uid is", uidString)
 
