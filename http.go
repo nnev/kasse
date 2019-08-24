@@ -238,7 +238,7 @@ func (k *Kasse) GetAddCard(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Returns a json containing the next swiped card UID. The UID is obtained using a channel which is written by the HandleCard method
+// AddCardEvent returns a json containing the next swiped card UID. The UID is obtained using a channel which is written by the HandleCard method
 func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
 	session, err := k.sessions.Get(req, "nnev-kasse")
 	if err != nil {
@@ -290,7 +290,7 @@ func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Creates a new Card for the POSTing user
+// PostAddCard creates a new Card for the POSTing user
 func (k *Kasse) PostAddCard(res http.ResponseWriter, req *http.Request) {
 	session, err := k.sessions.Get(req, "nnev-kasse")
 	if err != nil {
