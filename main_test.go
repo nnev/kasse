@@ -254,7 +254,7 @@ func TestAddCard(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		gotCard, gotErr := k.AddCard(tc.uid, tc.user)
+		gotCard, gotErr := k.AddCard(tc.uid, tc.user, "Description test")
 		if gotErr != tc.wantErr {
 			t.Errorf("AddCard(%x, %v) == (%v, %v), want (_, %v)", tc.uid, tc.user, gotCard, gotErr, tc.wantErr)
 			continue
