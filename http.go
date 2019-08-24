@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -203,6 +204,60 @@ func (k *Kasse) GetLogout(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (k *Kasse) GetAddBalancePage(res http.ResponseWriter, req *http.Request) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	user := ui.(User)
+
+	data := struct {
+		User User
+	}{
+		User: user,
+	}
+
+	res.Header().Set("Content-Type", "text/html")
+
+	if err := ExecuteTemplate(res, TemplateInput{Title: "Add Balance", Body: "addBalance.html", Data: data}); err != nil {
+		k.log.Println("Could not render template:", err)
+		http.Error(res, "Internal error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (k *Kasse) PostAddBalance(res http.ResponseWriter, req *http.Request) {
+	deposit, err := strconv.ParseInt(req.FormValue("deposit"), 10, 64)
+
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	user := ui.(User)
+
+	err = k.AddBalance(user, deposit)
+	if err != nil {
+		k.log.Println("Could not deposit money:", err)
+		http.Error(res, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(res, req, "/", 302)
+
+}
+
 // Handler returns a http.Handler for the webinterface.
 func (k *Kasse) Handler() http.Handler {
 	r := mux.NewRouter()
@@ -213,5 +268,7 @@ func (k *Kasse) Handler() http.Handler {
 	r.Methods("GET").Path("/logout.html").HandlerFunc(k.GetLogout)
 	r.Methods("GET").Path("/create_user.html").HandlerFunc(k.GetNewUserPage)
 	r.Methods("POST").Path("/create_user.html").HandlerFunc(k.PostNewUserPage)
+	r.Methods("GET").Path("/addBalance.html").HandlerFunc(k.GetAddBalancePage)
+	r.Methods("POST").Path("/addBalance.html").HandlerFunc(k.PostAddBalance)
 	return r
 }
