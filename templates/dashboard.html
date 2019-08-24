@@ -84,7 +84,7 @@
 		}
 
 		onRowClick("cardtable", function (row){
-			carduid = row.getAttribute("carduid");
+			var carduid = row.getAttribute("carduid");
 			if (carduid != null) {
 				document.getElementById("dialog_carduid").innerHTML = carduid;
 				dialog.showModal();
@@ -93,17 +93,16 @@
 
 		(function() {
 			'use strict';
-			var dialogButton = document.querySelector('.dialog-button');
-			var dialog = document.querySelector('#dialog');
+			let dialog = document.querySelector('#dialog');
 			if (! dialog.showModal) {
 				dialogPolyfill.registerDialog(dialog);
 			}
 			dialog.querySelector('.dialog-close')
-					.addEventListener('click', function(button) {
+					.addEventListener('click', function() {
 						dialog.close();
 					});
 			dialog.querySelector('.dialog-delete')
-				.addEventListener('click', function(button) {
+				.addEventListener('click', function() {
 				});
 			}());
 	</script>
