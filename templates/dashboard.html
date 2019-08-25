@@ -30,6 +30,7 @@
 			<tr>
 				<th class="mdl-data-table__cell--non-numeric">UID</th>
 				<th class="mdl-data-table__cell--non-numeric">Bezeichnung</th>
+				<th class="mdl-data-table__cell--non-numeric">Bearbeiten</th>
 			</tr>
 		  </thead>
 		  <tbody>
@@ -37,6 +38,7 @@
 			<tr carduid="{{ printf "%x" .ID }}">
 				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .ID }}</td>
 				<td class="mdl-data-table__cell--non-numeric">{{ .Description }}</td>
+				<td class="mdl-data-table__cell--non-numeric"><a href="edit_card.html?uid={{ printf "%x" .ID }}">edit</a></td>
 			</tr>
             {{ end }}
 		  </tbody>
@@ -54,58 +56,6 @@
 	  </div>
 	</div>
   </div>
-    <dialog id="dialog" class="mdl-dialog">
-		<h3 class="mdl-dialog__title">Delete Card</h3>
-		<div class="mdl-dialog__content">
-			<p>
-                Do you want to delete the following card?
-			</p>
-            <p id="dialog_carduid"></p>
-		</div>
-		<div class="mdl-dialog__actions">
-			<button type="button" class="mdl-button dialog-close">Close</button>
-			<button type="button" class="mdl-button dialog-delete">Delete</button>
-		</div>
-	</dialog>
-
-	<script src="static/dialog-polyfill.js"></script>
-	<script>
-		function onRowClick(tableId, callback) {
-			var table = document.getElementById(tableId),
-					rows = table.getElementsByTagName("tr"),
-					i;
-			for (i = 0; i < rows.length; i++) {
-				table.rows[i].onclick = function (row) {
-					return function () {
-						callback(row);
-					};
-				}(table.rows[i]);
-			}
-		}
-
-		onRowClick("cardtable", function (row){
-			var carduid = row.getAttribute("carduid");
-			if (carduid != null) {
-				document.getElementById("dialog_carduid").innerHTML = carduid;
-				dialog.showModal();
-			}
-		});
-
-		(function() {
-			'use strict';
-			let dialog = document.querySelector('#dialog');
-			if (! dialog.showModal) {
-				dialogPolyfill.registerDialog(dialog);
-			}
-			dialog.querySelector('.dialog-close')
-					.addEventListener('click', function() {
-						dialog.close();
-					});
-			dialog.querySelector('.dialog-delete')
-				.addEventListener('click', function() {
-				});
-			}());
-	</script>
 
   <!-- Last transactions -->
   <div class="mdl-cell mdl-cell--4-col">

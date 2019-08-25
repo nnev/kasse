@@ -9,7 +9,7 @@
   <div class="mdl-cell mdl-cell--4-col mdl-cell--4-offset">
     <div class="mdl-card mdl-shadow--2dp" id="add-card-box">
       <div class="mdl-card__title">
-        <h2 class="mdl-card__title-text">Edit Card {{ printf "%x" .Card.UID }}</h2>
+        <h2 class="mdl-card__title-text">Edit Card {{ printf "%x" .Card.ID }}</h2>
       </div>
       <div class="mdl-card__supporting-text">
         <p>{{ .Message }}</p>
@@ -18,7 +18,7 @@
         <form method="POST">
           <div class="mdl-textfield mdl-js-textfield">
             <input class="mdl-textfield__input" type="text" name="description" tabindex="1" value="{{ .Card.Description }}"/>
-            <input type="hidden" name="uid" value="{{ printf "%x" .Card.UID }}"/>
+            <input type="hidden" name="uid" value="{{ printf "%x" .Card.ID }}"/>
             <label class="mdl-textfield__label" for="description">Beschreibung</label>
           </div>
           <div class="mdl-card__actions">
@@ -32,7 +32,7 @@
               Remove Card
             </button>
             <button class="mdl-button mdl-button--colored mdl-js-button
-            mdl-js-ripple-effect" type="submit" formaction="/dashboard.html">
+            mdl-js-ripple-effect" type="submit" formaction="/" formmethod="GET">
               Cancel
             </button>
           </div>
