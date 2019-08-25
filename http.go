@@ -403,7 +403,7 @@ func (k *Kasse) PostRemoveCard(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		http.Redirect(res, req, "/", http.StatusOK)
+		http.Redirect(res, req, "/", http.StatusFound)
 		return
 	}
 
@@ -510,7 +510,7 @@ func (k *Kasse) PostUpdateCard(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	http.Redirect(res, req, "/", http.StatusOK)
+	http.Redirect(res, req, "/", http.StatusFound)
 	return
 }
 
