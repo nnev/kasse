@@ -377,12 +377,14 @@ func (k *Kasse) PostRemoveCard(res http.ResponseWriter, req *http.Request) {
 
 	uid, err := hex.DecodeString(uidString)
 	if err != nil {
-		http.Redirect(res, req, "/dashboard.html", http.StatusNotFound)
+		http.Redirect(res, req, "/", http.StatusNotFound)
+		return
 	}
 
 	card, err := k.GetCard(uid, user)
 	if err != nil {
-		http.Redirect(res, req, "/dashboard.html", http.StatusNotFound)
+		http.Redirect(res, req, "/", http.StatusNotFound)
+		return
 	}
 
 	err = k.RemoveCard(uid, &user)
@@ -401,7 +403,8 @@ func (k *Kasse) PostRemoveCard(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		http.Redirect(res, req, "/dashboard.html", http.StatusOK)
+		http.Redirect(res, req, "/", http.StatusOK)
+		return
 	}
 
 	http.Redirect(res, req, "/", 302)
@@ -422,20 +425,23 @@ func (k *Kasse) PostEditCard(res http.ResponseWriter, req *http.Request) {
 
 	user := ui.(User)
 
-	err = req.ParseForm()
-	if err != nil {
-		http.Error(res, "Internal error", http.StatusBadRequest)
+	uids, ok := req.URL.Query()["uid"]
+	if !ok || len(uids[0]) < 1 {
+		http.Error(res, "No uid given", http.StatusBadRequest)
+		return
 	}
-	uidString := req.Form.Get("uid")
+	uidString := uids[0]
 
 	uid, err := hex.DecodeString(uidString)
 	if err != nil {
-		http.Redirect(res, req, "/dashboard.html", http.StatusNotFound)
+		http.Redirect(res, req, "/", http.StatusNotFound)
+		return
 	}
 
 	card, err := k.GetCard(uid, user)
 	if err != nil {
-		http.Redirect(res, req, "/dashboard.html", http.StatusNotFound)
+		http.Redirect(res, req, "/", http.StatusNotFound)
+		return
 	}
 
 	data := struct {
@@ -476,7 +482,7 @@ func (k *Kasse) PostUpdateCard(res http.ResponseWriter, req *http.Request) {
 
 	uid, err := hex.DecodeString(uidString)
 	if err != nil {
-		http.Redirect(res, req, "/dashboard.html", http.StatusNotFound)
+		http.Redirect(res, req, "/", http.StatusNotFound)
 	}
 
 	description := req.Form.Get("description")
@@ -504,7 +510,8 @@ func (k *Kasse) PostUpdateCard(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	http.Redirect(res, req, "/dashboard.html", http.StatusOK)
+	http.Redirect(res, req, "/", http.StatusOK)
+	return
 }
 
 // Handler returns a http.Handler for the webinterface.
@@ -521,7 +528,7 @@ func (k *Kasse) Handler() http.Handler {
 	r.Methods("POST").Path("/add_card.html").HandlerFunc(k.PostAddCard)
 	r.Methods("GET").Path("/add_card_event").HandlerFunc(k.AddCardEvent)
 	r.Methods("POST").Path("/remove_card.html").HandlerFunc(k.PostRemoveCard)
-	r.Methods("POST").Path("/edit_card.html").HandlerFunc(k.PostEditCard)
-	r.Methods("POST").Path("/update_card.html").HandlerFunc(k.PostEditCard)
+	r.Methods("GET").Path("/edit_card.html").HandlerFunc(k.PostEditCard)
+	r.Methods("POST").Path("/update_card.html").HandlerFunc(k.PostUpdateCard)
 	return r
 }
