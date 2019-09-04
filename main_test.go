@@ -315,7 +315,44 @@ func TestRemoveCard(t *testing.T) {
 	for _, tc := range tcs {
 		gotErr := k.RemoveCard(tc.uid, tc.user)
 		if gotErr != tc.wantErr {
-			t.Errorf("RemoveCard(%x, %v) == (%v), want (_, %v)", tc.uid, tc.user, gotErr, tc.wantErr)
+			t.Errorf("RemoveCard(%x, %v) == %v, want  %v", tc.uid, tc.user, gotErr, tc.wantErr)
+			continue
+		}
+	}
+}
+
+func TestUpdateCard(t *testing.T) {
+	t.Parallel()
+
+	k := Kasse{db: createDB(t), log: testLogger(t)}
+	defer k.db.Close()
+
+	mero := &User{ID: 1, Name: "Merovius", Password: []byte("password")}
+	koebi := &User{ID: 2, Name: "Koebi", Password: []byte("password1")}
+
+	card1 := &Card{ID: []byte("aaaa"), User: mero.ID, Description: "card1"}
+	card2 := &Card{ID: []byte("aabb"), User: mero.ID, Description: "card2"}
+	card3 := &Card{ID: []byte("baaa"), User: koebi.ID, Description: "card3"}
+
+	insertData(t, k.db, []User{*mero, *koebi}, []Card{*card1, *card2, *card3}, nil)
+
+	tcs := []struct {
+		uid         []byte
+		user        *User
+		description string
+		wantErr     error
+	}{
+		{[]byte("aaaa"), mero, "update1", nil},
+		{[]byte("aaac"), mero, "update2", ErrCardNotFound},
+		{[]byte("bbaa"), mero, "update3", ErrCardNotFound},
+		{[]byte("aaaa"), mero, "update4", nil},
+		{[]byte("aabb"), mero, "update5", nil},
+	}
+
+	for _, tc := range tcs {
+		gotErr := k.UpdateCard(tc.uid, tc.user, tc.description)
+		if gotErr != tc.wantErr {
+			t.Errorf("UpdateCard(%x, %v) == %v, want %v", tc.uid, tc.user, gotErr, tc.wantErr)
 			continue
 		}
 	}
