@@ -374,7 +374,7 @@ func (k *Kasse) RemoveCard(uid []byte, user *User) error {
 	return nil
 }
 
-// UpdateCard updates the description of a card
+// UpdateCard updates the description of a card. It takes a uid, a user and a description and returns an error
 func (k *Kasse) UpdateCard(uid []byte, user *User, description string) error {
 	k.log.Printf("Updating card %x", uid)
 
