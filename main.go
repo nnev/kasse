@@ -234,7 +234,7 @@ func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	}
 	if balance < 100 {
 		res.Code = AccountEmpty
-		return res, ErrAccountEmpty
+		return res, nil
 	}
 
 	// Insert new transaction
