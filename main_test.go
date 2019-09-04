@@ -101,7 +101,7 @@ func TestHandleCard(t *testing.T) {
 		wantErr error
 		want    ResultCode
 	}{
-		{[]byte("foobar"), ErrCardNotFound, 0},
+		{[]byte("foobar"), ErrCardNotFound, UnknownCard},
 		{[]byte("baaa"), ErrAccountEmpty, AccountEmpty},
 		{[]byte("baab"), ErrAccountEmpty, AccountEmpty},
 		{[]byte("aaaa"), nil, PaymentMade},
@@ -118,13 +118,7 @@ func TestHandleCard(t *testing.T) {
 
 	for _, tc := range tcs {
 		got, gotErr := k.HandleCard(tc.input)
-		if tc.wantErr != nil {
-			if gotErr != tc.wantErr {
-				t.Errorf("HandleCard(%s) == (%v, %v), want (_, %v)", string(tc.input), got, gotErr, tc.wantErr)
-			}
-			continue
-		}
-		if got == nil || got.Code != tc.want {
+		if gotErr != tc.wantErr || got.Code != tc.want {
 			t.Errorf("HandleCard(%s) == (%v, %v), want (%v, %v)", string(tc.input), got, gotErr, tc.want, tc.wantErr)
 		}
 	}
