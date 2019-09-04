@@ -102,8 +102,8 @@ func TestHandleCard(t *testing.T) {
 		want    ResultCode
 	}{
 		{[]byte("foobar"), ErrCardNotFound, UnknownCard},
-		{[]byte("baaa"), ErrAccountEmpty, AccountEmpty},
-		{[]byte("baab"), ErrAccountEmpty, AccountEmpty},
+		{[]byte("baaa"), nil, AccountEmpty},
+		{[]byte("baab"), nil, AccountEmpty},
 		{[]byte("aaaa"), nil, PaymentMade},
 		{[]byte("aaab"), nil, PaymentMade},
 		{[]byte("aaaa"), nil, PaymentMade},
@@ -112,8 +112,8 @@ func TestHandleCard(t *testing.T) {
 		{[]byte("aaaa"), nil, LowBalance},
 		{[]byte("aaab"), nil, LowBalance},
 		{[]byte("aaaa"), nil, LowBalance},
-		{[]byte("aaab"), ErrAccountEmpty, AccountEmpty},
-		{[]byte("aaaa"), ErrAccountEmpty, AccountEmpty},
+		{[]byte("aaab"), nil, AccountEmpty},
+		{[]byte("aaaa"), nil, AccountEmpty},
 	}
 
 	for _, tc := range tcs {
