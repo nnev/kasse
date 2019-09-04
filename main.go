@@ -343,7 +343,7 @@ func (k *Kasse) AddCard(uid []byte, owner *User, description string) (*Card, err
 	return &card, nil
 }
 
-// RemoveCard removes a card. The function checks, if the requesting user is the card owner and prevents removal otherwise. It takes the UID of the card to remove and returns
+// RemoveCard removes a card. The function checks, if the requesting user is the card owner and prevents removal otherwise. It takes the UID of the card to remove and returns ErrCardNotFound if the card was not found or does not belong to the requesting user
 func (k *Kasse) RemoveCard(uid []byte, user *User) error {
 	k.log.Printf("Removing card %x", uid)
 
