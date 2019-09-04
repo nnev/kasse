@@ -46,7 +46,7 @@ type Kasse struct {
 	db           *sqlx.DB
 	log          *log.Logger
 	sessions     sessions.Store
-	card         (chan []byte)
+	card         chan []byte
 	registration sync.Mutex
 }
 
@@ -185,6 +185,7 @@ func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	// if some routine is reading from the card channel, return nil and no error, since all functionality should be handled by the listening routine.
 	select {
 	case k.card <- uid:
+		k.log.Println("Card UID dumped to other routine")
 		return &Result{
 			Code:    UnknownCard,
 			UID:     uid,
