@@ -3,11 +3,32 @@ language: go
 go:
     - 1.12
 
+before_install:
+    - sudo apt-get install -y libnfc-dev
+
 install:
-    - go get -tags nonfc -v github.com/nnev/kasse
+    - go get -v github.com/nnev/kasse
 
 script:
-    - go test -tags nonfc ./...
+    - go test ./...
 
 notifications:
     email: false
+
+before_deploy:
+    - git tag -f master-release
+    - cp $GOPATH/bin/kasse kasse
+    - tar cvzf master-release-kasse.tar.gz templates/* kasse
+
+deploy:
+    provider: releases
+    name: master
+    prerelease: true
+    overwrite: true
+    skip_cleanup: true
+    api_key:
+        secure: K8p8+hQU5sKRK4DezAT4orj0CQ+7shV6x5UAdSG4cK6IhBL8D2xIoh8lx05imuCj5oxfVmErK07AFMcwle0VVTKpfoiaKHGX9ZHMZH+qKWrjRJ6C9TpwN9hIiFL/jl2n+XQJLY235AJXJM+1K02yQ+KgtKjQc087TgWmg6bVB7o=
+    file: master-release-kasse.tar.gz
+    on:
+        branch: master
+        repo: nnev/kasse
