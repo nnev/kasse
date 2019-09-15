@@ -3,11 +3,33 @@ language: go
 go:
     - 1.12
 
+before_install:
+    - sudo apt-get install -y libnfc-dev
+
 install:
-    - go get -tags nonfc -v github.com/nnev/kasse
+    - go get -v github.com/nnev/kasse
 
 script:
-    - go test -tags nonfc ./...
+    - go test ./...
 
 notifications:
     email: false
+
+before_deploy:
+    # Set up git user name and tag this commit
+    #- git config --local user.name "YOUR GIT USER NAME"
+    #- git config --local user.email "YOUR GIT USER EMAIL"
+    #- export TRAVIS_TAG=${TRAVIS_TAG:-$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)}
+    - git tag master-release
+
+deploy:
+    provider: releases
+    name: master
+    prerelease: true
+    override: true
+    api_key:
+        secure: K8p8+hQU5sKRK4DezAT4orj0CQ+7shV6x5UAdSG4cK6IhBL8D2xIoh8lx05imuCj5oxfVmErK07AFMcwle0VVTKpfoiaKHGX9ZHMZH+qKWrjRJ6C9TpwN9hIiFL/jl2n+XQJLY235AJXJM+1K02yQ+KgtKjQc087TgWmg6bVB7o=
+    file: "$GOPATH/bin/kasse"
+    on:
+        branch: travis-releases
+        repo: nnev/kasse
