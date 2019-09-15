@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
 	"time"
 )
@@ -258,13 +257,13 @@ func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
 	k.registration.Lock()
 	defer k.registration.Unlock()
 	if _, err := res.Write([]byte("event: lock\ndata: lock\n\n")); err != nil {
-		log.Println("Could not write: ", err)
+		k.log.Println("Could not write: ", err)
 	}
 	if f, ok := res.(http.Flusher); ok {
 		f.Flush()
 	}
 
-	log.Println("Waiting for Card")
+	k.log.Println("Waiting for Card")
 
 	// Read from the channel for one minute. If the timeout is exceeded and the registration window is still open on the client, the browser reconnects anyway
 	var uid []byte
@@ -279,10 +278,10 @@ func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
 
 	// Send card UID in hexadecimal form to client
 	uidString := fmt.Sprintf("%x", uid)
-	log.Println("Card UID obtained! Card uid is", uidString)
+	k.log.Println("Card UID obtained! Card uid is", uidString)
 
 	if _, err := res.Write([]byte(fmt.Sprintf("event: card\ndata: %s\n\n", uidString))); err != nil {
-		log.Println("Could not write: ", err)
+		k.log.Println("Could not write: ", err)
 	}
 
 	if f, ok := res.(http.Flusher); ok {
