@@ -15,20 +15,22 @@
         Bitte gib eine Beschreibung für
         deine Karte ein und geh deine Karte swipen.
         <br/>
-        <font color="red">{{ .Message }}</font>
+        <span style="color: red; ">{{ .Message }}</span>
       </div>
       <div class="registration-lock mdl-card__supporting-text">
-        <font color="red">Waiting for other users to finish registration…</font>
+        <span style="color: red; ">Waiting for other users to finish registration…</span>
       </div>
       <div class="mdl-card__supporting-text">
         <form method="POST">
           <div class="mdl-textfield mdl-js-textfield">
-            <input class="mdl-textfield__input" type="text" name="description" tabindex="1" value="{{ .Description }}"/>
-            <label class="mdl-textfield__label" for="description">Beschreibung</label>
+            <label class="mdl-textfield__label" for="description">Beschreibung
+              <input class="mdl-textfield__input" type="text" name="description" tabindex="1" value="{{ .Description }}"/>
+            </label>
           </div>
           <div class="mdl-textfield mdl-js-textfield">
-            <input class="mdl-textfield__input" type="text" name="uid" readonly/>
-            <label class="mdl-textfield__label" for="uid">Swipe Card</label>
+            <label class="mdl-textfield__label" for="uid">Swipe Card
+              <input class="mdl-textfield__input" type="text" name="uid" readonly/>
+            </label>
           </div>
           <div class="mdl-card__actions">
             <div class="mdl-layout-spacer"></div>
@@ -52,20 +54,17 @@ var evtSource = new EventSource('/add_card_event');
 var eventTarget = document.querySelector('input[name=uid]');
 document.querySelector('input[name="description"]').focus();
 
-evtSource.addEventListener('lock', function(e) {
-  console.log("lock obtained");
+evtSource.addEventListener('lock', function() {
   document.querySelector('div .registration-lock').style.display = "none";
 });
 
 evtSource.addEventListener('card', function(e) {
-  console.log("card event");
   eventTarget.value = e.data;
   eventTarget.closest('div .mdl-textfield').className += " is-dirty";
   evtSource.close()
 });
 
 evtSource.onopen = function(e) {
-  console.log("open")
 };
 evtSource.onerror = function(e) {
   console.log("error:", e)
