@@ -303,12 +303,8 @@ func (k *Kasse) PostAddCard(res http.ResponseWriter, req *http.Request) {
 
 	user := ui.(User)
 
-	err = req.ParseForm()
-	if err != nil {
-		http.Error(res, "Internal error", http.StatusBadRequest)
-	}
-	description := req.Form.Get("description")
-	uidString := req.Form.Get("uid")
+	description := req.FormValue("description")
+	uidString := req.FormValue("uid")
 
 	renderError := func(message string) {
 		data := struct {
