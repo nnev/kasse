@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 	"time"
@@ -276,11 +275,11 @@ func (k *Kasse) AddCardEvent(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Send card UID in hexadecimal form to client
-	uidString := fmt.Sprintf("%x", uid)
+	// Send card UID in hexadecimal to client
+	uidString := hex.EncodeToString(uid)
 	k.log.Println("Card UID obtained! Card uid is", uidString)
 
-	if _, err := res.Write([]byte(fmt.Sprintf("event: card\ndata: %s\n\n", uidString))); err != nil {
+	if _, err := res.Write([]byte("event: card\ndata: " + uidString + "\n\n")); err != nil {
 		k.log.Println("Could not write: ", err)
 	}
 
