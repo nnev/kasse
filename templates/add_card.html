@@ -23,11 +23,11 @@
       <div class="mdl-card__supporting-text">
         <form method="POST">
           <div class="mdl-textfield mdl-js-textfield">
-            <input class="mdl-textfield__input" type="text" name="description" tabindex="1" value="{{ .Description }}"/>
+            <input class="mdl-textfield__input" type="text" id="description" tabindex="1" value="{{ .Description }}"/>
             <label class="mdl-textfield__label" for="description">Beschreibung</label>
           </div>
           <div class="mdl-textfield mdl-js-textfield">
-            <input class="mdl-textfield__input" type="text" name="uid" readonly/>
+            <input class="mdl-textfield__input" type="text" id="uid" readonly/>
             <label class="mdl-textfield__label" for="uid">Swipe Card</label>
           </div>
           <div class="mdl-card__actions">
@@ -48,11 +48,11 @@
 </div>
 
 <script type="text/javascript">
-var evtSource = new EventSource('/add_card_event');
-var eventTarget = document.querySelector('input[name=uid]');
+let evtSource = new EventSource('/add_card_event');
+let eventTarget = document.querySelector('input[name=uid]');
 document.querySelector('input[name="description"]').focus();
 
-evtSource.addEventListener('lock', function(e) {
+evtSource.addEventListener('lock', function() {
   document.querySelector('div .registration-lock').style.display = "none";
 });
 
