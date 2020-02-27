@@ -79,7 +79,7 @@ func insertData(t *testing.T, db *sqlx.DB, us []User, cs []Card, ts []Transactio
 func TestHandleCard(t *testing.T) {
 	t.Parallel()
 
-	k := Kasse{db: createDB(t), log: testLogger(t)}
+	k := Kasse{card: make(chan []byte), db: createDB(t), log: testLogger(t)}
 	defer k.db.Close()
 
 	insertData(t, k.db, []User{
@@ -97,34 +97,40 @@ func TestHandleCard(t *testing.T) {
 	})
 
 	tcs := []struct {
+		reading bool
 		input   []byte
 		wantErr error
 		want    ResultCode
 	}{
-		{[]byte("foobar"), ErrCardNotFound, 0},
-		{[]byte("baaa"), ErrAccountEmpty, AccountEmpty},
-		{[]byte("baab"), ErrAccountEmpty, AccountEmpty},
-		{[]byte("aaaa"), nil, PaymentMade},
-		{[]byte("aaab"), nil, PaymentMade},
-		{[]byte("aaaa"), nil, PaymentMade},
-		{[]byte("aaab"), nil, LowBalance},
-		{[]byte("aaab"), nil, LowBalance},
-		{[]byte("aaaa"), nil, LowBalance},
-		{[]byte("aaab"), nil, LowBalance},
-		{[]byte("aaaa"), nil, LowBalance},
-		{[]byte("aaab"), ErrAccountEmpty, AccountEmpty},
-		{[]byte("aaaa"), ErrAccountEmpty, AccountEmpty},
+		{true, []byte("asdf"), nil, UnknownCard},
+		{false, []byte("foobar"), ErrCardNotFound, UnknownCard},
+		{false, []byte("baaa"), nil, AccountEmpty},
+		{false, []byte("baab"), nil, AccountEmpty},
+		{false, []byte("aaaa"), nil, PaymentMade},
+		{false, []byte("aaab"), nil, PaymentMade},
+		{false, []byte("aaaa"), nil, PaymentMade},
+		{true, []byte("aaaa"), nil, UnknownCard},
+		{false, []byte("aaab"), nil, LowBalance},
+		{false, []byte("aaab"), nil, LowBalance},
+		{false, []byte("aaaa"), nil, LowBalance},
+		{false, []byte("aaab"), nil, LowBalance},
+		{false, []byte("aaaa"), nil, LowBalance},
+		{false, []byte("aaab"), nil, AccountEmpty},
+		{false, []byte("aaaa"), nil, AccountEmpty},
 	}
 
 	for _, tc := range tcs {
-		got, gotErr := k.HandleCard(tc.input)
-		if tc.wantErr != nil {
-			if gotErr != tc.wantErr {
-				t.Errorf("HandleCard(%s) == (%v, %v), want (_, %v)", string(tc.input), got, gotErr, tc.wantErr)
-			}
-			continue
+		if tc.reading {
+			ch := make(chan bool)
+			go func() {
+				ch <- true
+				<-k.card
+			}()
+			// wait for go routine to be ready
+			<-ch
 		}
-		if got == nil || got.Code != tc.want {
+		got, gotErr := k.HandleCard(tc.input)
+		if gotErr != tc.wantErr || got.Code != tc.want {
 			t.Errorf("HandleCard(%s) == (%v, %v), want (%v, %v)", string(tc.input), got, gotErr, tc.want, tc.wantErr)
 		}
 	}
@@ -254,7 +260,7 @@ func TestAddCard(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		gotCard, gotErr := k.AddCard(tc.uid, tc.user)
+		gotCard, gotErr := k.AddCard(tc.uid, tc.user, "Description test")
 		if gotErr != tc.wantErr {
 			t.Errorf("AddCard(%x, %v) == (%v, %v), want (_, %v)", tc.uid, tc.user, gotCard, gotErr, tc.wantErr)
 			continue
@@ -274,6 +280,80 @@ func TestAddCard(t *testing.T) {
 
 		if bytes.Compare(gotCard.ID, wantCard.ID) != 0 || gotCard.User != wantCard.User {
 			t.Errorf("AddCard(%x, %v) == (%v, %v), want (%v, %v)", tc.uid, tc.user, gotCard, gotErr, wantCard, tc.wantErr)
+		}
+	}
+}
+
+func TestRemoveCard(t *testing.T) {
+	t.Parallel()
+
+	k := Kasse{db: createDB(t), log: testLogger(t)}
+	defer k.db.Close()
+
+	mero := &User{ID: 1, Name: "Merovius", Password: []byte("password")}
+	koebi := &User{ID: 2, Name: "Koebi", Password: []byte("password1")}
+
+	card1 := &Card{ID: []byte("aaaa"), User: mero.ID, Description: "card1"}
+	card2 := &Card{ID: []byte("aabb"), User: mero.ID, Description: "card2"}
+	card3 := &Card{ID: []byte("baaa"), User: koebi.ID, Description: "card3"}
+
+	insertData(t, k.db, []User{*mero, *koebi}, []Card{*card1, *card2, *card3}, nil)
+
+	tcs := []struct {
+		uid     []byte
+		user    *User
+		wantErr error
+	}{
+		{[]byte("aaaa"), koebi, ErrCardNotFound},
+		{[]byte("aaaa"), mero, nil},
+		{[]byte("aaaa"), koebi, ErrCardNotFound},
+		{[]byte("aaaa"), mero, ErrCardNotFound},
+		{[]byte("aabb"), mero, nil},
+		{[]byte("aabc"), mero, ErrCardNotFound},
+	}
+
+	for _, tc := range tcs {
+		gotErr := k.RemoveCard(tc.uid, tc.user)
+		if gotErr != tc.wantErr {
+			t.Errorf("RemoveCard(%x, %v) == %v, want  %v", tc.uid, tc.user, gotErr, tc.wantErr)
+			continue
+		}
+	}
+}
+
+func TestUpdateCard(t *testing.T) {
+	t.Parallel()
+
+	k := Kasse{db: createDB(t), log: testLogger(t)}
+	defer k.db.Close()
+
+	mero := &User{ID: 1, Name: "Merovius", Password: []byte("password")}
+	koebi := &User{ID: 2, Name: "Koebi", Password: []byte("password1")}
+
+	card1 := &Card{ID: []byte("aaaa"), User: mero.ID, Description: "card1"}
+	card2 := &Card{ID: []byte("aabb"), User: mero.ID, Description: "card2"}
+	card3 := &Card{ID: []byte("baaa"), User: koebi.ID, Description: "card3"}
+
+	insertData(t, k.db, []User{*mero, *koebi}, []Card{*card1, *card2, *card3}, nil)
+
+	tcs := []struct {
+		uid         []byte
+		user        *User
+		description string
+		wantErr     error
+	}{
+		{[]byte("aaaa"), mero, "update1", nil},
+		{[]byte("aaac"), mero, "update2", ErrCardNotFound},
+		{[]byte("bbaa"), mero, "update3", ErrCardNotFound},
+		{[]byte("aaaa"), mero, "update4", nil},
+		{[]byte("aabb"), mero, "update5", nil},
+	}
+
+	for _, tc := range tcs {
+		gotErr := k.UpdateCard(tc.uid, tc.user, tc.description)
+		if gotErr != tc.wantErr {
+			t.Errorf("UpdateCard(%x, %v) == %v, want %v", tc.uid, tc.user, gotErr, tc.wantErr)
+			continue
 		}
 	}
 }
