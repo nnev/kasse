@@ -9,9 +9,11 @@
         <div>{{ .Balance }}€</div>
 	  </div>
 	  <div class="mdl-card__actions mdl-card--border">
+      <a href="/addBalance.html">
         <button class="mdl-button mdl-button--accent mdl-jso-button mdl-js-ripple-effect">
           Aufladen
         </button>
+      </a>
 	  </div>
 	</div>
   </div>
@@ -73,7 +75,7 @@
 		  <tbody>
             {{ range .Transactions }}
 			<tr>
-				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .Card }}</td>
+        <td class="mdl-data-table__cell--non-numeric">{{if .Card}} {{ printf "%x" .Card }} {{else}} {{`Aufladung`}} {{end}}</td>
 				<td class="mdl-data-table__cell--non-numeric"><time>{{ .Time.Format "2006-01-02 15:04" }}</time></td>
 				<td class="mdl-data-table__cell--non-numeric">{{ toEuros .Amount }}€</td>
 			</tr>

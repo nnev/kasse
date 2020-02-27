@@ -366,6 +366,25 @@ func (k *Kasse) GetBalance(user User) (int64, error) {
 	return b.Int64, nil
 }
 
+func (k *Kasse) AddBalance(user User, deposit int64) error {
+	k.log.Printf("Adding balance %d for owner %s", deposit, user.Name)
+
+	tx, err := k.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`INSERT INTO transactions (user_id, card_id, time, amount, kind) VALUES ($1, NULL, $3, $4, $5)`, user.ID, time.Now(), deposit*100, "Aufladung"); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetTransactions gets the last n transactions for a given user. If n ≤ 0, all
 // transactions are returnsed.
 func (k *Kasse) GetTransactions(user User, n int) ([]Transaction, error) {
