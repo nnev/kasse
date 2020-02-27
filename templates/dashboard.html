@@ -25,7 +25,7 @@
 
 	  <div class="mdl-card__media">
 		{{ if .Cards }}
-		<table class="mdl-data-table mdl-js-data-table">
+		<table id="cardtable" class="mdl-data-table mdl-js-data-table">
 		  <thead>
 			<tr>
 				<th class="mdl-data-table__cell--non-numeric">UID</th>
@@ -34,7 +34,7 @@
 		  </thead>
 		  <tbody>
             {{ range .Cards }}
-			<tr>
+			<tr carduid="{{ printf "%x" .ID }}">
 				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .ID }}</td>
 				<td class="mdl-data-table__cell--non-numeric">{{ .Description }}</td>
 			</tr>
@@ -46,9 +46,11 @@
 		{{ end }}
 	  </div>
 	  <div class="mdl-card__menu">
+      <a href="/add_card.html">
         <button class="mdl-button mdl-button--fab mdl-button--mini-fab mdl-button--colored mdl-js-button mdl-js-ripple-effect">
           <i class="material-icons">add</i>
         </button>
+      </a>
 	  </div>
 	</div>
   </div>
