@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Merovius/go-misc/lcd2usb"
@@ -42,9 +43,11 @@ type NFCEvent struct {
 // Kasse collects all state of the application in a central type, to make
 // parallel testing possible.
 type Kasse struct {
-	db       *sqlx.DB
-	log      *log.Logger
-	sessions sessions.Store
+	db           *sqlx.DB
+	log          *log.Logger
+	sessions     sessions.Store
+	card         chan []byte
+	registration sync.Mutex
 }
 
 // User represents a user in the system (as in the database schema).
@@ -87,6 +90,8 @@ const (
 	// AccountEmpty means the charge was not applied, because there are not
 	// enough funds left in the account.
 	AccountEmpty
+	// UnknownCard means that the swipe will be ignored
+	UnknownCard
 )
 
 // Result is the action taken by a swipe of a card. It contains all information
@@ -177,6 +182,20 @@ var ErrWrongAuth = errors.New("wrong username or password")
 func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	k.log.Printf("Card %x was swiped", uid)
 
+	// if some routine is reading from the card channel, return nil and no error, since all functionality should be handled by the listening routine.
+	select {
+	case k.card <- uid:
+		k.log.Println("Card UID dumped to other routine")
+		return &Result{
+			Code:    UnknownCard,
+			UID:     uid,
+			User:    "",
+			Account: 0,
+		}, nil
+	default:
+		// do nothing and simply continue with execution
+	}
+
 	tx, err := k.db.Beginx()
 	if err != nil {
 		return nil, err
@@ -187,7 +206,13 @@ func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	var user User
 	if err := tx.Get(&user, `SELECT users.user_id, name, password FROM cards LEFT JOIN users ON cards.user_id = users.user_id WHERE card_id = $1`, uid); err != nil {
 		k.log.Println("Card not found in database")
-		return nil, ErrCardNotFound
+
+		return &Result{
+			Code:    UnknownCard,
+			UID:     uid,
+			User:    "",
+			Account: 0,
+		}, ErrCardNotFound
 	}
 	k.log.Printf("Card belongs to %v", user.Name)
 
@@ -210,7 +235,7 @@ func (k *Kasse) HandleCard(uid []byte) (*Result, error) {
 	}
 	if balance < 100 {
 		res.Code = AccountEmpty
-		return res, ErrAccountEmpty
+		return res, nil
 	}
 
 	// Insert new transaction
@@ -283,8 +308,8 @@ func (k *Kasse) RegisterUser(name string, password []byte) (*User, error) {
 // AddCard adds a card to the database with a given owner and returns a
 // populated card struct. It returns ErrCardExists if a card with the given UID
 // already exists.
-func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
-	k.log.Printf("Adding card %x for owner %s", uid, owner.Name)
+func (k *Kasse) AddCard(uid []byte, owner *User, description string) (*Card, error) {
+	k.log.Printf("Adding card %x for owner %s and description %s", uid, owner.Name, description)
 
 	tx, err := k.db.Beginx()
 	if err != nil {
@@ -302,7 +327,7 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 		return nil, err
 	}
 
-	if _, err := tx.Exec(`INSERT INTO cards (card_id, user_id, description) VALUES ($1, $2, '')`, uid, owner.ID); err != nil {
+	if _, err := tx.Exec(`INSERT INTO cards (card_id, user_id, description) VALUES ($1, $2, $3)`, uid, owner.ID, description); err != nil {
 		return nil, err
 	}
 
@@ -314,7 +339,70 @@ func (k *Kasse) AddCard(uid []byte, owner *User) (*Card, error) {
 
 	card.ID = uid
 	card.User = owner.ID
+
 	return &card, nil
+}
+
+// RemoveCard removes a card. The function checks, if the requesting user is the card owner and prevents removal otherwise. It takes the UID of the card to remove and returns ErrCardNotFound if the card was not found or does not belong to the requesting user
+func (k *Kasse) RemoveCard(uid []byte, user *User) error {
+	k.log.Printf("Removing card %x", uid)
+
+	tx, err := k.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// We need to check first if the card actually belongs to the user, which wants to remove it
+	var card Card
+	if err := tx.Get(&card, `SELECT card_id, user_id FROM cards WHERE card_id = $1 AND user_id = $2`, uid, user.ID); err == sql.ErrNoRows {
+		return ErrCardNotFound
+	} else if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DELETE FROM cards WHERE card_id == $1 AND user_id == $2`, card.ID, user.ID); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	k.log.Println("Card removed successfully")
+
+	return nil
+}
+
+// UpdateCard updates the description of a card. It takes a uid, a user and a description and returns an error
+func (k *Kasse) UpdateCard(uid []byte, user *User, description string) error {
+	k.log.Printf("Updating card %x", uid)
+
+	tx, err := k.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// We need to check first if the card actually belongs to the user, which wants to remove it
+	var card Card
+	if err := tx.Get(&card, `SELECT card_id, user_id FROM cards WHERE card_id = $1 AND user_id = $2`, uid, user.ID); err == sql.ErrNoRows {
+		return ErrCardNotFound
+	} else if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`UPDATE cards SET description = $1 WHERE card_id == $2 AND user_id == $3`, description, card.ID, user.ID); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	k.log.Println("Card updated successfully")
+
+	return nil
 }
 
 // Authenticate tries to authenticate a given username/password combination
@@ -354,6 +442,15 @@ func (k *Kasse) GetCards(user User) ([]Card, error) {
 		return nil, err
 	}
 	return cards, nil
+}
+
+// GetCard gets the cards for a given card uid and user.
+func (k *Kasse) GetCard(uid []byte, user User) (*Card, error) {
+	var cards []Card
+	if err := k.db.Select(&cards, `SELECT card_id, user_id, description FROM cards WHERE card_id = $1 AND user_id = $2`, uid, user.ID); err != nil {
+		return nil, err
+	}
+	return &cards[0], nil
 }
 
 // GetBalance gets the current balance for a given user.
@@ -399,6 +496,8 @@ func main() {
 		}
 	}()
 
+	k.card = make(chan []byte)
+	k.registration = sync.Mutex{}
 	k.sessions = sessions.NewCookieStore([]byte("TODO: Set up safer password"))
 	http.Handle("/", handlers.LoggingHandler(os.Stderr, k.Handler()))
 
@@ -411,6 +510,7 @@ func main() {
 	}
 
 	events := make(chan NFCEvent)
+
 	// We have to wrap the call in a func(), because the go statement evaluates
 	// it's arguments in the current goroutine, and the argument to log.Fatal
 	// blocks in these cases.
