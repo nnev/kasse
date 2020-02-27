@@ -1,0 +1,70 @@
+<style>
+.mdl-card__actions {
+  display: flex;
+  align-items: center;
+}
+</style>
+
+<div class="mdl-grid">
+  <div class="mdl-cell mdl-cell--4-col mdl-cell--4-offset">
+    <div class="mdl-card mdl-shadow--2dp" id="add-card-box">
+      <div class="mdl-card__title">
+        <h2 class="mdl-card__title-text">Adding Card for {{ .User.Name }}</h2>
+      </div>
+      <div class="mdl-card__supporting-text">
+        Bitte gib eine Beschreibung für
+        deine Karte ein und geh deine Karte swipen.
+        <br/>
+        <span style="color: red; ">{{ .Message }}</span>
+      </div>
+      <div class="registration-lock mdl-card__supporting-text">
+        <span style="color: red; ">Waiting for other users to finish registration…</span>
+      </div>
+      <div class="mdl-card__supporting-text">
+        <form method="POST">
+          <div class="mdl-textfield mdl-js-textfield">
+            <input class="mdl-textfield__input" type="text" name="description" tabindex="1" value="{{ .Description }}"/>
+            <label class="mdl-textfield__label" for="description">Beschreibung</label>
+          </div>
+          <div class="mdl-textfield mdl-js-textfield">
+            <input class="mdl-textfield__input" type="text" name="uid" readonly/>
+            <label class="mdl-textfield__label" for="uid">Swipe Card</label>
+          </div>
+          <div class="mdl-card__actions">
+            <div class="mdl-layout-spacer"></div>
+            <button class="mdl-button mdl-button--colored mdl-js-button
+            mdl-js-ripple-effect" type="submit">
+              Add Card
+            </button>
+              <button class="mdl-button mdl-button--colored mdl-js-button
+            mdl-js-ripple-effect" type="submit" formaction="/" formmethod="GET">
+                  Cancel
+              </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+let evtSource = new EventSource('/add_card_event');
+let eventTarget = document.querySelector('input[name="uid"]');
+document.querySelector('input[name="description"]').focus();
+
+evtSource.addEventListener('lock', function() {
+  document.querySelector('div .registration-lock').style.display = "none";
+});
+
+evtSource.addEventListener('card', function(e) {
+  eventTarget.value = e.data;
+  eventTarget.closest('div .mdl-textfield').className += " is-dirty";
+  evtSource.close()
+});
+
+evtSource.onopen = function(e) {
+};
+evtSource.onerror = function(e) {
+  console.log("error:", e)
+};
+</script>
