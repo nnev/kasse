@@ -343,6 +343,68 @@ func (k *Kasse) AddCard(uid []byte, owner *User, description string) (*Card, err
 	return &card, nil
 }
 
+// RemoveCard removes a card. The function checks, if the requesting user is the card owner and prevents removal otherwise. It takes the UID of the card to remove and returns ErrCardNotFound if the card was not found or does not belong to the requesting user
+func (k *Kasse) RemoveCard(uid []byte, user *User) error {
+	k.log.Printf("Removing card %x", uid)
+
+	tx, err := k.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// We need to check first if the card actually belongs to the user, which wants to remove it
+	var card Card
+	if err := tx.Get(&card, `SELECT card_id, user_id FROM cards WHERE card_id = $1 AND user_id = $2`, uid, user.ID); err == sql.ErrNoRows {
+		return ErrCardNotFound
+	} else if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DELETE FROM cards WHERE card_id == $1 AND user_id == $2`, card.ID, user.ID); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	k.log.Println("Card removed successfully")
+
+	return nil
+}
+
+// UpdateCard updates the description of a card. It takes a uid, a user and a description and returns an error
+func (k *Kasse) UpdateCard(uid []byte, user *User, description string) error {
+	k.log.Printf("Updating card %x", uid)
+
+	tx, err := k.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// We need to check first if the card actually belongs to the user, which wants to remove it
+	var card Card
+	if err := tx.Get(&card, `SELECT card_id, user_id FROM cards WHERE card_id = $1 AND user_id = $2`, uid, user.ID); err == sql.ErrNoRows {
+		return ErrCardNotFound
+	} else if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`UPDATE cards SET description = $1 WHERE card_id == $2 AND user_id == $3`, description, card.ID, user.ID); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	k.log.Println("Card updated successfully")
+
+	return nil
+}
+
 // Authenticate tries to authenticate a given username/password combination
 // against the database. It is guaranteed to take at least 200 Milliseconds. It
 // returns ErrWrongAuth, if the user or password was wrong. If no error

@@ -30,6 +30,7 @@
 			<tr>
 				<th class="mdl-data-table__cell--non-numeric">UID</th>
 				<th class="mdl-data-table__cell--non-numeric">Bezeichnung</th>
+				<th class="mdl-data-table__cell--non-numeric">Bearbeiten</th>
 			</tr>
 		  </thead>
 		  <tbody>
@@ -37,6 +38,7 @@
 			<tr carduid="{{ printf "%x" .ID }}">
 				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .ID }}</td>
 				<td class="mdl-data-table__cell--non-numeric">{{ .Description }}</td>
+				<td class="mdl-data-table__cell--non-numeric"><a href="edit_card.html?uid={{ printf "%x" .ID }}">edit</a></td>
 			</tr>
             {{ end }}
 		  </tbody>

@@ -348,6 +348,166 @@ func (k *Kasse) PostAddCard(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/", 302)
 }
 
+// PostRemoveCard removes a card for the POSTing user
+func (k *Kasse) PostRemoveCard(res http.ResponseWriter, req *http.Request) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+
+	user := ui.(User)
+
+	err = req.ParseForm()
+	if err != nil {
+		http.Error(res, "Internal error", http.StatusBadRequest)
+	}
+	uidString := req.Form.Get("uid")
+
+	uid, err := hex.DecodeString(uidString)
+	if err != nil {
+		http.Redirect(res, req, "/", http.StatusNotFound)
+		return
+	}
+
+	card, err := k.GetCard(uid, user)
+	if err != nil {
+		http.Redirect(res, req, "/", http.StatusNotFound)
+		return
+	}
+
+	err = k.RemoveCard(uid, &user)
+	if err != nil {
+		data := struct {
+			Card    *Card
+			Message string
+		}{
+			Card:    card,
+			Message: err.Error(),
+		}
+
+		if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "edit_card.html", Data: &data}); err != nil {
+			k.log.Println("Could not render template:", err)
+			http.Error(res, "Internal error", 500)
+			return
+		}
+	} else {
+		http.Redirect(res, req, "/", http.StatusFound)
+		return
+	}
+
+	http.Redirect(res, req, "/", 302)
+}
+
+// PostEditCard renders an edit dialog for a given card
+func (k *Kasse) PostEditCard(res http.ResponseWriter, req *http.Request) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+
+	user := ui.(User)
+
+	uids, ok := req.URL.Query()["uid"]
+	if !ok || len(uids[0]) < 1 {
+		http.Error(res, "No uid given", http.StatusBadRequest)
+		return
+	}
+	uidString := uids[0]
+
+	uid, err := hex.DecodeString(uidString)
+	if err != nil {
+		http.Redirect(res, req, "/", http.StatusNotFound)
+		return
+	}
+
+	card, err := k.GetCard(uid, user)
+	if err != nil {
+		http.Redirect(res, req, "/", http.StatusNotFound)
+		return
+	}
+
+	data := struct {
+		Card    *Card
+		Message string
+	}{
+		Card:    card,
+		Message: "",
+	}
+
+	if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "edit_card.html", Data: &data}); err != nil {
+		k.log.Println("Could not render template:", err)
+		http.Error(res, "Internal error", 500)
+		return
+	}
+}
+
+// PostUpdateCard saves card changes and redirects to the dashboard
+func (k *Kasse) PostUpdateCard(res http.ResponseWriter, req *http.Request) {
+	session, err := k.sessions.Get(req, "nnev-kasse")
+	if err != nil {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+	ui, ok := session.Values["user"]
+	if !ok {
+		http.Redirect(res, req, "/login.html", 302)
+		return
+	}
+
+	user := ui.(User)
+
+	err = req.ParseForm()
+	if err != nil {
+		http.Error(res, "Internal error", http.StatusBadRequest)
+	}
+	uidString := req.Form.Get("uid")
+
+	uid, err := hex.DecodeString(uidString)
+	if err != nil {
+		http.Redirect(res, req, "/", http.StatusNotFound)
+	}
+
+	description := req.Form.Get("description")
+
+	err = k.UpdateCard(uid, &user, description)
+	if err != nil {
+		card, err2 := k.GetCard(uid, user)
+		message := err.Error()
+		if err2 != nil {
+			message = err2.Error()
+		}
+
+		data := struct {
+			Card    *Card
+			Message string
+		}{
+			Card:    card,
+			Message: message,
+		}
+
+		if err := ExecuteTemplate(res, TemplateInput{Title: "ccchd Kasse", Body: "edit_card.html", Data: &data}); err != nil {
+			k.log.Println("Could not render template:", err)
+			http.Error(res, "Internal error", 500)
+			return
+		}
+	}
+
+	http.Redirect(res, req, "/", http.StatusFound)
+	return
+}
+
 // Handler returns a http.Handler for the webinterface.
 func (k *Kasse) Handler() http.Handler {
 	r := mux.NewRouter()
@@ -361,5 +521,8 @@ func (k *Kasse) Handler() http.Handler {
 	r.Methods("GET").Path("/add_card.html").HandlerFunc(k.GetAddCard)
 	r.Methods("POST").Path("/add_card.html").HandlerFunc(k.PostAddCard)
 	r.Methods("GET").Path("/add_card_event").HandlerFunc(k.AddCardEvent)
+	r.Methods("POST").Path("/remove_card.html").HandlerFunc(k.PostRemoveCard)
+	r.Methods("GET").Path("/edit_card.html").HandlerFunc(k.PostEditCard)
+	r.Methods("POST").Path("/update_card.html").HandlerFunc(k.PostUpdateCard)
 	return r
 }
