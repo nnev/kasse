@@ -30,6 +30,7 @@
 			<tr>
 				<th class="mdl-data-table__cell--non-numeric">UID</th>
 				<th class="mdl-data-table__cell--non-numeric">Bezeichnung</th>
+				<th></th>
 			</tr>
 		  </thead>
 		  <tbody>
@@ -37,6 +38,11 @@
 			<tr>
 				<td class="mdl-data-table__cell--non-numeric">{{ printf "%x" .ID }}</td>
 				<td class="mdl-data-table__cell--non-numeric">{{ .Description }}</td>
+				<td class="mdl-data-table__cell--non-numeric">
+				  <button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored edit-card">
+				    <i class="material-icons">edit</i>
+				  </button>
+				</td>
 			</tr>
             {{ end }}
 		  </tbody>
